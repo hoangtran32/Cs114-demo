@@ -1,0 +1,102 @@
+=== CELL 24 (code) ===
+X = df_final.drop(columns=['Label'])
+y = df_final['Label']
+
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_val_scaled = scaler.transform(X_val)
+
+=== CELL 26 (code) ===
+models = {
+    "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
+    "Random Forest": RandomForestClassifier(n_estimators=100, n_jobs=-1, random_state=42),
+    "LightGBM": lgb.LGBMClassifier(n_estimators=500, learning_rate=0.05, random_state=42, n_jobs=-1)
+}
+
+results = {}
+
+plt.figure(figsize=(10, 8))
+
+for name, model in models.items():
+    print(f"--- Đang huấn luyện {name} ---")
+    model.fit(X_train_scaled, y_train)
+    
+    y_probs = model.predict_proba(X_val_scaled)[:, 1]
+    y_pred = model.predict(X_val_scaled)
+    
+    auc = roc_auc_score(y_val, y_probs)
+    acc = accuracy_score(y_val, y_pred)
+    results[name] = {"AUC": auc, "Accuracy": acc}
+    
+    fpr, tpr, _ = roc_curve(y_val, y_probs)
+    plt.plot(fpr, tpr, label=f'{name} (AUC = {auc:.4f})')
+
+plt.plot([0, 1], [0, 1], 'k--')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('So sánh đường cong ROC giữa các mô hình')
+plt.legend()
+plt.show()
+
+print("\nBẢNG TỔNG HỢP KẾT QUẢ TRÊN TẬP VALIDATION:")
+for name, m in results.items():
+    print(f"{name}: Accuracy = {m['Accuracy']:.4f}, ROC AUC = {m['AUC']:.4f}")
+
+=== CELL 28 (code) ===
+res_df = pd.DataFrame(results).T.reset_index().rename(columns={'index': 'Model'})
+
+res_df_melted = res_df.melt(id_vars='Model', var_name='Metric', value_name='Score')
+
+plt.figure(figsize=(10, 6))
+sns.barplot(data=res_df_melted, x='Model', y='Score', hue='Metric')
+plt.ylim(0.8, 1.0) 
+plt.title("So sánh Accuracy và ROC AUC giữa các mô hình")
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+=== CELL 30 (code) ===
+fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+for i, (name, model) in enumerate(models.items()):
+    y_pred = model.predict(X_val_scaled)
+    cm = confusion_matrix(y_val, y_pred)
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Purples', ax=axes[i])
+    axes[i].set_title(f'Confusion Matrix: {name}')
+    axes[i].set_xlabel('Dự đoán')
+    axes[i].set_ylabel('Thực tế')
+
+plt.tight_layout()
+plt.show()
+
+=== CELL 34 (code) ===
+print("--- Đang load dữ liệu Test---")
+convert_to_parquet(folder_path, "test_features.jsonl", "test_data.parquet")
+df_test = pd.read_parquet("test_data.parquet", columns=top_200_features + ['Label'])
+
+X_test_final = df_test[top_200_features]
+y_test_final = df_test['Label']
+
+X_test_scaled = scaler.transform(X_test_final)
+
+best_model = models["LightGBM"]
+y_test_pred = best_model.predict(X_test_scaled)
+y_test_probs = best_model.predict_proba(X_test_scaled)[:, 1]
+
+print("\n" + "="*30)
+print("KẾT QUẢ ĐÁNH GIÁ TRÊN TẬP TEST ĐỘC LẬP")
+print(f"Accuracy Score: {accuracy_score(y_test_final, y_test_pred):.4f}")
+print(f"ROC AUC Score: {roc_auc_score(y_test_final, y_test_probs):.4f}")
+print("="*30)
+
+print("\nClassification Report:")
+print(classification_report(y_test_final, y_test_pred))
+
+plt.figure(figsize=(6,5))
+sns.heatmap(confusion_matrix(y_test_final, y_test_pred), annot=True, fmt='d', cmap='Greens')
+plt.xlabel('Dự đoán (Predicted)')
+plt.ylabel('Thực tế (Actual)')
+plt.title('Confusion Matrix trên tập Test gốc của EMBER')
+plt.show()
+

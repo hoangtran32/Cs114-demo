@@ -1,0 +1,118 @@
+Number of cells: 35
+
+Cell 00 | markdown | # Báo cáo Phân loại Malware sử dụng Machine Learning trên bộ dữ liệu EMBER
+
+Cell 01 | code     | import numpy as np
+        import pandas as pd
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        import lightgbm as lgb
+
+Cell 02 | markdown | ## 1.1 Xây dựng lớp trích xuất đặc trưng (Feature Extraction)
+
+Cell 03 | code     | class FeatureType(object):
+            def __init__(self):
+                self.name = ''
+                self.dim = 0
+            def process_raw_features(self, raw_obj):
+
+Cell 04 | markdown | ## 1.2 Chuyển đổi dữ liệu sang định dạng Parquet
+
+Cell 05 | code     | def convert_to_parquet(directory_path, pattern, output_name):
+            extractor = PEFeatureExtractor()
+            jsonl_files = glob.glob(os.path.join(directory_path, pattern))
+            jsonl_files.sort()
+
+Cell 06 | code     | convert_to_parquet(folder_path, "train_features_*.jsonl", "train_data.parquet")
+        df_train = pd.read_parquet("train_data.parquet")
+
+Cell 07 | markdown | ## 1.3 Khảo sát phân bố nhãn dữ liệu
+
+Cell 08 | code     | print(df_train['Label'].value_counts()) 
+
+Cell 09 | code     | with open('/kaggle/input/datasets/hoangtnh/ember-dataset/train_features_0.jsonl', 'r') as f:
+            sample_json = json.loads(f.readline())
+            print("--- MẪU DỮ LIỆU JSON (TRÍCH ĐOẠN) ---")
+            print(json.dumps(sample_json['general'], indent=2)) 
+
+Cell 10 | markdown | ## 2. Tiền xử lý dữ liệu và làm sạch đặc trưng
+
+Cell 11 | code     | # Lấy ngẫu nhiên 50,000 mẫu để làm EDA
+        df_sample = df_train.sample(n=50000, random_state=42)
+
+Cell 12 | markdown | ## 2.1 Loại bỏ đặc trưng không hữu ích
+
+Cell 13 | code     | constant_cols = [col for col in df_sample.columns if df_sample[col].nunique() <= 1]
+        print(f"Số lượng cột bị loại bỏ vì không chứa thông tin: {len(constant_cols)}")
+        df_filtered = df_sample.drop(columns=constant_cols)
+
+Cell 14 | markdown | ## 3. Lựa chọn đặc trưng bằng LightGBM
+
+Cell 15 | code     | import lightgbm as lgb
+        X = df_filtered.drop(columns=['Label'])
+        y = df_filtered['Label']
+
+Cell 16 | markdown | ## 3.1 Phân tích Feature Importance
+
+Cell 17 | code     | plt.figure(figsize=(10, 8))
+        sns.barplot(x='Importance', y='Feature', data=importance_df.head(20))
+        plt.title('Top 20 Đặc trưng quan trọng nhất để phát hiện Malware')
+        plt.show()
+
+Cell 18 | markdown | ## 4. Phân tích dữ liệu khám phá (EDA)
+
+Cell 19 | code     | top_1 = top_200_features[0]
+        plt.figure(figsize=(10, 5))
+        sns.kdeplot(data=df_sample, x=top_1, hue='Label', fill=True)
+        plt.title(f'Phân phối của đặc trưng {top_1} giữa Malware và Benign')
+        plt.show()
+
+Cell 20 | code     | features_to_keep = top_200_features + ['Label']
+        df_final = df_train[features_to_keep]
+        print(f"Kích thước tập dữ liệu mới: {df_final.shape}")
+
+Cell 21 | markdown | ## 4.1 Phân tích tương quan giữa các đặc trưng
+
+Cell 22 | code     | top_20 = top_200_features[:20]
+        corr_matrix = df_final[top_20].corr()
+        plt.figure(figsize=(12, 10))
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+
+Cell 23 | markdown | ## 5. Chia tập dữ liệu và chuẩn bị huấn luyện
+
+Cell 24 | code     | X = df_final.drop(columns=['Label'])
+        y = df_final['Label']
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+Cell 25 | markdown | ## 6. Huấn luyện và so sánh mô hình Machine Learning
+
+Cell 26 | code     | models = {
+            "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
+            "Random Forest": RandomForestClassifier(n_estimators=100, n_jobs=-1, random_state=42),
+            "LightGBM": lgb.LGBMClassifier(n_estimators=500, learning_rate=0.05, random_state=42, n_jobs=-1)
+        }
+
+Cell 27 | markdown | ## 6.1 Tổng hợp kết quả mô hình
+
+Cell 28 | code     | res_df = pd.DataFrame(results).T.reset_index().rename(columns={'index': 'Model'})
+        res_df_melted = res_df.melt(id_vars='Model', var_name='Metric', value_name='Score')
+        plt.figure(figsize=(10, 6))
+
+Cell 29 | markdown | ## 7. Đánh giá trực quan mô hình
+
+Cell 30 | code     | fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+        for i, (name, model) in enumerate(models.items()):
+            y_pred = model.predict(X_val_scaled)
+            cm = confusion_matrix(y_val, y_pred)
+
+Cell 31 | markdown | ## Tổng kết
+
+Cell 32 | markdown | # Kết luận và hướng phát triển
+
+Cell 33 | markdown | ## 8. Đánh giá trên tập Test độc lập
+
+Cell 34 | code     | print("--- Đang load dữ liệu Test---")
+        convert_to_parquet(folder_path, "test_features.jsonl", "test_data.parquet")
+        df_test = pd.read_parquet("test_data.parquet", columns=top_200_features + ['Label'])
+        X_test_final = df_test[top_200_features]
+

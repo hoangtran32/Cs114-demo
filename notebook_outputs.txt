@@ -1,0 +1,124 @@
+=== CELL 06 OUTPUTS ===
+Đang xử lý: train_features_0.jsonl...
+Đang xử lý: train_features_1.jsonl...
+Đang xử lý: train_features_2.jsonl...
+Đang xử lý: train_features_3.jsonl...
+Đang xử lý: train_features_4.jsonl...
+Đang xử lý: train_features_5.jsonl...
+--- Hoàn thành! File lưu tại: train_data.parquet ---
+
+
+=== CELL 08 OUTPUTS ===
+Label
+0    300000
+1    300000
+Name: count, dtype: int64
+
+
+=== CELL 09 OUTPUTS ===
+--- MẪU DỮ LIỆU JSON (TRÍCH ĐOẠN) ---
+{
+  "size": 3101705,
+  "vsize": 380928,
+  "has_debug": 0,
+  "exports": 0,
+  "imports": 156,
+  "has_relocations": 0,
+  "has_resources": 1,
+  "has_signature": 0,
+  "has_tls": 0,
+  "symbols": 0
+}
+
+==================================================
+
+--- MẪU DỮ LIỆU PARQUET (5 DÒNG ĐẦU) ---
+
+
+=== CELL 13 OUTPUTS ===
+Số lượng cột bị loại bỏ vì không chứa thông tin: 41
+
+
+=== CELL 15 OUTPUTS ===
+[LightGBM] [Info] Number of positive: 25035, number of negative: 24965
+[LightGBM] [Info] Auto-choosing col-wise multi-threading, the overhead of testing was 2.059401 seconds.
+You can set `force_col_wise=true` to remove the overhead.
+[LightGBM] [Info] Total Bins 195586
+[LightGBM] [Info] Number of data points in the train set: 50000, number of used features: 2287
+[LightGBM] [Info] [binary:BoostFromScore]: pavg=0.500700 -> initscore=0.002800
+[LightGBM] [Info] Start training from score 0.002800
+Đã chọn xong 200 đặc trưng quan trọng nhất!
+{
+  "text/plain": "42"
+}
+
+=== CELL 17 OUTPUTS ===
+
+
+=== CELL 19 OUTPUTS ===
+
+
+=== CELL 20 OUTPUTS ===
+Kích thước tập dữ liệu mới: (600000, 201)
+
+
+=== CELL 22 OUTPUTS ===
+
+
+=== CELL 26 OUTPUTS ===
+--- Đang huấn luyện Logistic Regression ---
+--- Đang huấn luyện Random Forest ---
+--- Đang huấn luyện LightGBM ---
+[LightGBM] [Info] Number of positive: 239929, number of negative: 240071
+[LightGBM] [Info] Auto-choosing col-wise multi-threading, the overhead of testing was 0.851996 seconds.
+You can set `force_col_wise=true` to remove the overhead.
+[LightGBM] [Info] Total Bins 44629
+[LightGBM] [Info] Number of data points in the train set: 480000, number of used features: 200
+[LightGBM] [Info] [binary:BoostFromScore]: pavg=0.499852 -> initscore=-0.000592
+[LightGBM] [Info] Start training from score -0.000592
+/usr/local/lib/python3.12/dist-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.12/dist-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+
+BẢNG TỔNG HỢP KẾT QUẢ TRÊN TẬP VALIDATION:
+Logistic Regression: Accuracy = 0.8328, ROC AUC = 0.9080
+Random Forest: Accuracy = 0.9736, ROC AUC = 0.9969
+LightGBM: Accuracy = 0.9628, ROC AUC = 0.9942
+
+
+=== CELL 28 OUTPUTS ===
+
+
+=== CELL 30 OUTPUTS ===
+/usr/local/lib/python3.12/dist-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+
+
+=== CELL 34 OUTPUTS ===
+--- Đang load dữ liệu Test---
+Đang xử lý: test_features.jsonl...
+--- Hoàn thành! File lưu tại: test_data.parquet ---
+/usr/local/lib/python3.12/dist-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.12/dist-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+
+==============================
+KẾT QUẢ ĐÁNH GIÁ TRÊN TẬP TEST ĐỘC LẬP
+Accuracy Score: 0.9492
+ROC AUC Score: 0.9889
+==============================
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.96      0.94      0.95    100000
+           1       0.94      0.96      0.95    100000
+
+    accuracy                           0.95    200000
+   macro avg       0.95      0.95      0.95    200000
+weighted avg       0.95      0.95      0.95    200000
+
+
+

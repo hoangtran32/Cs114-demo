@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMBER AI: Trình phân tích & Phát hiện Malware PE trực quan</title>
+    <meta name="description" content="Trải nghiệm và tương tác trực quan toàn bộ pipeline học máy phân loại mã độc sử dụng bộ dữ liệu EMBER và mô hình LightGBM/Random Forest">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <!-- Custom Particle Mesh Background Canvas -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- App Container -->
+    <div class="app-container">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon">🛡️</div>
+                <div class="brand-text">
+                    <h1>EMBER AI</h1>
+                    <span>MALWARE DETECTOR</span>
+                </div>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-btn active" id="nav-dashboard" onclick="switchTab('dashboard')">
+                    <span class="icon">📊</span> Tổng quan & Pipeline
+                </button>
+                <button class="nav-btn" id="nav-sandbox" onclick="switchTab('sandbox')">
+                    <span class="icon">🔬</span> Sandbox Dự đoán PE
+                </button>
+                <button class="nav-btn" id="nav-visualization" onclick="switchTab('visualization')">
+                    <span class="icon">🌳</span> Trực quan Quyết định (XAI)
+                </button>
+            </nav>
+
+            <div class="system-status">
+                <div class="status-indicator online"></div>
+                <div class="status-text">
+                    <p>Hệ thống Model</p>
+                    <span>ONLINE (LightGBM)</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- TAB 1: DASHBOARD & PIPELINE WALKTHROUGH -->
+            <section id="tab-dashboard" class="tab-pane active">
+                <header class="content-header">
+                    <h2>MALWARE ML PIPELINE WALKTHROUGH</h2>
+                    <p>Khám phá trực quan từng bước biến đổi dữ liệu từ tập dữ liệu EMBER sang mô hình học máy phát hiện mã độc tối tân.</p>
+                </header>
+
+                <!-- Pipeline Steps Navigation Dots/Bar -->
+                <div class="pipeline-bar">
+                    <div class="pipeline-progress-line" id="pipeline-progress-line"></div>
+                    <div class="step-node active" onclick="goToStep(0)" data-step="0">
+                        <div class="node-dot">1</div>
+                        <span>Trích xuất PE</span>
+                    </div>
+                    <div class="step-node" onclick="goToStep(1)" data-step="1">
+                        <div class="node-dot">2</div>
+                        <span>Lưu Parquet</span>
+                    </div>
+                    <div class="step-node" onclick="goToStep(2)" data-step="2">
+                        <div class="node-dot">3</div>
+                        <span>Làm sạch</span>
+                    </div>
+                    <div class="step-node" onclick="goToStep(3)" data-step="3">
+                        <div class="node-dot">4</div>
+                        <span>Lựa chọn</span>
+                    </div>
+                    <div class="step-node" onclick="goToStep(4)" data-step="4">
+                        <div class="node-dot">5</div>
+                        <span>EDA & KDE</span>
+                    </div>
+                    <div class="step-node" onclick="goToStep(5)" data-step="5">
+                        <div class="node-dot">6</div>
+                        <span>So sánh Model</span>
+                    </div>
+                </div>
+
+                <!-- Pipeline Slides Container -->
+                <div class="pipeline-wizard">
+                    
+                    <!-- STEP 1: RAW PE & FEATURE EXTRACTION -->
+                    <div class="wizard-slide active" id="slide-0">
+                        <div class="slide-grid">
+                            <div class="slide-info">
+                                <span class="step-badge">BƯỚC 1</span>
+                                <h3>Trích xuất Đặc trưng PE & Cấu trúc EMBER</h3>
+                                <p>Một file thực thi Windows Portable Executable (PE) chứa hàng nghìn trường dữ liệu phức tạp. Để đưa vào mô hình Machine Learning, chúng tôi chuyển đổi mã nhị phân thô thành các trường thông tin có cấu trúc.</p>
+                                <p>Sử dụng phương pháp trích xuất đặc trưng của thư viện <strong>EMBER</strong>, cấu trúc PE được ánh xạ thành <strong>2,381 đặc trưng số</strong> thuộc 9 nhóm thông tin chính:</p>
+                                <ul class="feature-groups">
+                                    <li><strong>Byte Histogram (256):</strong> Phân bố tần suất xuất hiện của các byte.</li>
+                                    <li><strong>Byte Entropy (256):</strong> Độ đo sự hỗn loạn của dữ liệu nhị phân.</li>
+                                    <li><strong>Section Info (255):</strong> Kích thước, thuộc tính và entropy của các phân vùng (.text, .data...).</li>
+                                    <li><strong>Imports/Exports Info (1408):</strong> Danh sách thư viện liên kết động và hàm API được gọi.</li>
+                                    <li><strong>Header, General, Strings:</strong> Metadata kỹ thuật, chuỗi ký tự in được.</li>
+                                </ul>
+                            </div>
+                            <div class="slide-visual">
+                                <div class="visual-card">
+                                    <div class="card-header">
+                                        <span>BẢN ĐỒ GIẢI PHẪU FILE PE</span>
+                                        <div class="pulse-indicator"></div>
+                                    </div>
+                                    <div class="anatomy-visualizer">
+                                        <div class="bin-item" style="animation-delay: 0.1s">
+                                            <span class="bin-label">DOS Header (Magic: MZ)</span>
+                                            <div class="bin-bar" style="width: 15%"></div>
+                                        </div>
+                                        <div class="bin-item style-blue" style="animation-delay: 0.3s">
+                                            <span class="bin-label">PE Header & File Headers</span>
+                                            <div class="bin-bar" style="width: 35%"></div>
+                                        </div>
+                                        <div class="bin-item style-purple" style="animation-delay: 0.5s">
+                                            <span class="bin-label">Section Table (Properties / Flags)</span>
+                                            <div class="bin-bar" style="width: 60%"></div>
+                                        </div>
+                                        <div class="bin-item style-green" style="animation-delay: 0.7s">
+                                            <span class="bin-label">Binary Sections (.text, .rdata, .data...)</span>
+                                            <div class="bin-bar" style="width: 90%"></div>
+                                        </div>
+                                        <div class="bin-item style-orange" style="animation-delay: 0.9s">
+                                            <span class="bin-label">Imports Directory (APIs)</span>
+                                            <div class="bin-bar" style="width: 45%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="console-box" id="step1-console">
+                                        <span class="c-line">[EXTRACTOR] Đang phân tích file nhị phân...</span>
+                                        <span class="c-line c-green">[SUCCESS] Trích xuất thành công 2,381 chiều đặc trưng.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: PARQUET COMPRESSION -->
+                    <div class="wizard-slide" id="slide-1">
+                        <div class="slide-grid">
+                            <div class="slide-info">
+                                <span class="step-badge">BƯỚC 2</span>
+                                <h3>Chuyển đổi dữ liệu sang định dạng Parquet</h3>
+                                <p>Tập dữ liệu EMBER gốc gồm 1.1 triệu mẫu được lưu trữ dưới dạng JSONL (văn bản bán cấu trúc). Định dạng này cực kỳ cồng kềnh, tốn dung lượng bộ nhớ và rất chậm khi xử lý truy vấn học máy.</p>
+                                <p>Chúng tôi tiến hành tối ưu hóa bằng cách chuyển đổi toàn bộ tập dữ liệu sang định dạng cột <strong>Apache Parquet</strong>:</p>
+                                <ul class="benefit-list">
+                                    <li><strong>Nén dữ liệu vượt trội:</strong> Giảm kích thước tệp tin trên đĩa lên đến 85% nhờ cơ chế nén cột thông minh.</li>
+                                    <li><strong>Tăng tốc truy cập:</strong> Đọc trực tiếp các cột cần dùng cho mô hình mà không cần nạp toàn bộ dòng vào RAM.</li>
+                                    <li><strong>Tương thích hoàn hảo:</strong> Dễ dàng tích hợp với các thư viện xử lý Pandas và PyArrow trong Python.</li>
+                                </ul>
+                            </div>
+                            <div class="slide-visual">
+                                <div class="visual-card">
+                                    <div class="card-header">
+                                        <span>SO SÁNH HIỆU QUẢ QUY TRÌNH LƯU TRỮ</span>
+                                    </div>
+                                    <div class="comparison-visualizer">
+                                        <div class="comp-box">
+                                            <h4>Định dạng cũ (JSONL)</h4>
+                                            <div class="comp-bar-container">
+                                                <div class="comp-bar bad-bar" style="height: 140px">
+                                                    <span>12.5 GB</span>
+                                                </div>
+                                            </div>
+                                            <p>Cồng kềnh, phân tích tuần tự rất chậm</p>
+                                        </div>
+                                        <div class="arrow-container">➡️</div>
+                                        <div class="comp-box">
+                                            <h4>Định dạng mới (Parquet)</h4>
+                                            <div class="comp-bar-container">
+                                                <div class="comp-bar good-bar" style="height: 25px">
+                                                    <span>1.8 GB</span>
+                                                </div>
+                                            </div>
+                                            <p>Nén cột, truy xuất song song tức thì (~7x)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: PREPROCESSING (CLEANING) -->
+                    <div class="wizard-slide" id="slide-2">
+                        <div class="slide-grid">
+                            <div class="slide-info">
+                                <span class="step-badge">BƯỚC 3</span>
+                                <h3>Tiền xử lý & Loại bỏ đặc trưng vô dụng</h3>
+                                <p>Một số lượng lớn cột đặc trưng trong số 2,381 chiều có giá trị hoàn toàn không thay đổi (hằng số) trên toàn bộ tập dữ liệu, hoặc có phương sai cực kỳ thấp (hầu hết toàn số 0).</p>
+                                <p>Các đặc trưng này không hề mang lại thông tin hữu ích giúp mô hình phân biệt giữa mã độc và tệp tin sạch, thậm chí gây ra tình trạng nhiễu dữ liệu và lãng phí tính toán.</p>
+                                <p><strong>Giải pháp:</strong></p>
+                                <ul class="cleaning-steps">
+                                    <li>Áp dụng kiểm tra phương sai trên tập con ngẫu nhiên gồm <strong>50,000 mẫu dữ liệu</strong>.</li>
+                                    <li>Tự động quét và loại bỏ <strong>41 đặc trưng hằng số</strong> (phương sai bằng 0).</li>
+                                    <li>Rút gọn tập đặc trưng giúp mô hình học nhanh hơn và tránh hiện tượng quá khớp (overfitting).</li>
+                                </ul>
+                            </div>
+                            <div class="slide-visual">
+                                <div class="visual-card">
+                                    <div class="card-header">
+                                        <span>QUÉT VÀ LOẠI BỎ ĐẶC TRƯNG HẰNG SỐ</span>
+                                    </div>
+                                    <div class="matrix-visualizer" id="variance-matrix">
+                                        <!-- Will be generated by JS -->
+                                    </div>
+                                    <div class="console-box">
+                                        <span class="c-line">[CLEANING] Quét 2,381 đặc trưng...</span>
+                                        <span class="c-line c-orange">[WARNING] Phát hiện 41 cột đặc trưng có phương sai = 0.</span>
+                                        <span class="c-line c-green">[SUCCESS] Loại bỏ 41 cột hằng số. Tập dữ liệu còn lại 2,340 đặc trưng.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: FEATURE SELECTION (LIGHTGBM) -->
+                    <div class="wizard-slide" id="slide-3">
+                        <div class="slide-grid">
+                            <div class="slide-info">
+                                <span class="step-badge">BƯỚC 4</span>
+                                <h3>Lựa chọn Đặc trưng bằng tầm quan trọng LightGBM</h3>
+                                <p>Dù đã loại bỏ các cột hằng số, số lượng đặc trưng còn lại vẫn rất lớn (2,340 chiều), gây khó khăn cho việc triển khai mô hình nhẹ trong môi trường thực tế.</p>
+                                <p>Chúng tôi sử dụng thuật toán <strong>LightGBM</strong> để đánh giá độ quan trọng của từng đặc trưng (Feature Importance):</p>
+                                <ul class="selection-steps">
+                                    <li>Huấn luyện mô hình LightGBM nhanh trên tập con 50,000 mẫu.</li>
+                                    <li>Trích xuất điểm số quan trọng dựa trên tiêu chí <strong>Split Importance</strong> (số lần đặc trưng được dùng làm điểm chia các nhánh cây quyết định).</li>
+                                    <li>Lọc lấy <strong>Top 200 đặc trưng xuất sắc nhất</strong> có điểm số cao nhất để sử dụng cho mô hình huấn luyện chính thức.</li>
+                                </ul>
+                            </div>
+                            <div class="slide-visual">
+                                <div class="visual-card">
+                                    <div class="card-header">
+                                        <span>TOP 10 ĐẶC TRƯNG QUAN TRỌNG NHẤT (SPLIT IMPORTANCE)</span>
+                                    </div>
+                                    <div class="importance-chart" id="importance-chart-div">
+                                        <!-- Custom SVG chart generated by JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 5: EDA & KDE PLOT -->
+                    <div class="wizard-slide" id="slide-4">
+                        <div class="slide-grid">
+                            <div class="slide-info">
+                                <span class="step-badge">BƯỚC 5</span>
+                                <h3>Phân tích Phân bố (KDE) & Bản đồ Tương quan (EDA)</h3>
+                                <p>Chúng tôi thực hiện Phân tích Dữ liệu Khám phá (EDA) trên Top đặc trưng đã lựa chọn để thấu hiểu cách mô hình "nhìn nhận" sự khác biệt giữa tệp tin sạch (Benign) và tệp độc hại (Malware).</p>
+                                <p><strong>Biểu đồ Phân phối Mật độ Kernel (KDE Plot):</strong></p>
+                                <p>Trực quan hóa sự khác biệt rõ rệt của đặc trưng quan trọng nhất giữa hai nhãn. Mật độ phân bố tập trung ở các vùng giá trị hoàn toàn tách biệt, chứng minh đặc trưng này là chìa khóa vàng giúp phân loại Malware.</p>
+                                <p><strong>Bản đồ nhiệt Tương quan (Correlation Heatmap):</strong></p>
+                                <p>Đo lường mối quan hệ tuyến tính giữa Top 10 đặc trưng hàng đầu để kiểm tra sự trùng lặp thông tin.</p>
+                            </div>
+                            <div class="slide-visual">
+                                <div class="visual-card flex-visual-card">
+                                    <div class="sub-visual">
+                                        <div class="sub-card-header">MẬT ĐỘ PHÂN BỐ (KDE PLOT) ĐẶC TRƯNG F738</div>
+                                        <div id="kde-chart-div" class="chart-container-small"></div>
+                                    </div>
+                                    <div class="sub-visual">
+                                        <div class="sub-card-header">BẢN ĐỒ TƯƠNG QUAN CHÉO (CORRELATION HEATMAP)</div>
+                                        <div id="heatmap-chart-div" class="chart-container-small"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 6: MODELS COMPARISON -->
+                    <div class="wizard-slide" id="slide-5">
+                        <div class="slide-grid">
+                            <div class="slide-info">
+                                <span class="step-badge">BƯỚC 6</span>
+                                <h3>So sánh hiệu năng các mô hình Machine Learning</h3>
+                                <p>Chúng tôi tiến hành huấn luyện thử nghiệm và so sánh chéo giữa 3 thuật toán phân loại phổ biến trên tập dữ liệu EMBER hoàn chỉnh (600,000 mẫu, rút gọn còn 200 đặc trưng):</p>
+                                <div class="model-cards-container">
+                                    <div class="mini-model-card border-cyan">
+                                        <h5>Logistic Regression</h5>
+                                        <p>Mô hình tuyến tính đơn giản, đóng vai trò làm Baseline.</p>
+                                        <div class="mini-stat">Accuracy: <strong>83.28%</strong></div>
+                                    </div>
+                                    <div class="mini-model-card border-purple">
+                                        <h5>Random Forest</h5>
+                                        <p>Mô hình quần thể cây quyết định song song, chính xác cao.</p>
+                                        <div class="mini-stat">Accuracy: <strong>97.36%</strong></div>
+                                    </div>
+                                    <div class="mini-model-card border-emerald">
+                                        <h5>LightGBM</h5>
+                                        <p>Gradient Boosting tối ưu, tốc độ siêu nhanh & độ chính xác đỉnh cao.</p>
+                                        <div class="mini-stat">Accuracy: <strong>96.28%</strong></div>
+                                    </div>
+                                </div>
+                                <p class="model-note"><strong>Nhận xét:</strong> Random Forest và LightGBM cho hiệu năng xuất sắc vượt trội (>96%), trong đó LightGBM vượt trội hơn hẳn về mặt tài nguyên tính toán và dung lượng model nhỏ gọn, lý tưởng để đưa vào môi trường Sandbox chạy thực tế.</p>
+                            </div>
+                            <div class="slide-visual">
+                                <div class="visual-card flex-visual-card">
+                                    <div class="visual-tabs">
+                                        <button class="visual-tab-btn active" id="vtab-btn-metrics" onclick="switchVisualTab('metrics')">📊 Thống kê Hiệu năng</button>
+                                        <button class="visual-tab-btn" id="vtab-btn-tree" onclick="switchVisualTab('tree')">🌳 Cây Quyết định LGBM</button>
+                                        <button class="visual-tab-btn" id="vtab-btn-train" onclick="switchVisualTab('train')">⚙️ Quy trình Train & Update</button>
+                                    </div>
+                                    
+                                    <!-- TAB 1: METRICS -->
+                                    <div id="vtab-content-metrics" class="visual-tab-content active">
+                                        <div class="sub-visuals-row">
+                                            <div class="sub-visual">
+                                                <div class="sub-card-header">SO SÁNH ĐƯỜNG CONG ROC (VAL SET)</div>
+                                                <div id="roc-chart-div" class="chart-container-small"></div>
+                                            </div>
+                                            <div class="sub-visual">
+                                                <div class="sub-card-header">BIỂU ĐỒ SO SÁNH ĐIỂM SỐ METRIC</div>
+                                                <div id="metrics-chart-div" class="chart-container-small"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- TAB 2: INTERACTIVE LGBM TREE -->
+                                    <div id="vtab-content-tree" class="visual-tab-content">
+                                        <div class="sub-card-header">SƠ ĐỒ QUYẾT ĐỊNH CỦA MỘT CÂY LGBM ĐIỂN HÌNH</div>
+                                        <div class="lgb-tree-scroll-container">
+                                            <div class="html-tree">
+                                                <div class="tree-node root-node">
+                                                    <div class="node-box root-box">
+                                                        <span class="node-tag tag-cyan">Gốc (Root)</span>
+                                                        <p class="node-cond">Entropy .text &gt; 7.15?</p>
+                                                    </div>
+                                                    <div class="tree-children">
+                                                        <div class="tree-child child-left">
+                                                            <div class="branch-label text-red">Đúng (Nhánh A: Nghi ngờ)</div>
+                                                            <div class="tree-node inner-node">
+                                                                <div class="node-box inner-box">
+                                                                    <span class="node-tag tag-purple">Chữ ký số</span>
+                                                                    <p class="node-cond">Không có chữ ký?</p>
+                                                                </div>
+                                                                <div class="tree-children">
+                                                                    <div class="tree-child child-left">
+                                                                        <div class="branch-label text-red">Đúng (A.1)</div>
+                                                                        <div class="tree-node leaf-node malware-leaf">
+                                                                            <span class="leaf-tag">MALWARE</span>
+                                                                            <p class="leaf-conf">Độ tin cậy: 99.1%</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="tree-child child-right">
+                                                                        <div class="branch-label text-green">Sai (A.2)</div>
+                                                                        <div class="tree-node leaf-node benign-leaf">
+                                                                            <span class="leaf-tag">BENIGN</span>
+                                                                            <p class="leaf-conf">Độ tin cậy: 92.4%</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="tree-child child-right">
+                                                            <div class="branch-label text-green">Sai (Nhánh B: Sạch)</div>
+                                                            <div class="tree-node inner-node">
+                                                                <div class="node-box inner-box">
+                                                                    <span class="node-tag tag-purple">Hàm Imports</span>
+                                                                    <p class="node-cond">Imports Count &lt; 15?</p>
+                                                                </div>
+                                                                <div class="tree-children">
+                                                                    <div class="tree-child child-left">
+                                                                        <div class="branch-label text-red">Đúng (B.1)</div>
+                                                                        <div class="tree-node leaf-node malware-leaf">
+                                                                            <span class="leaf-tag">MALWARE</span>
+                                                                            <p class="leaf-conf">Độ tin cậy: 95.4%</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="tree-child child-right">
+                                                                        <div class="branch-label text-green">Sai (B.2)</div>
+                                                                        <div class="tree-node leaf-node benign-leaf">
+                                                                            <span class="leaf-tag">BENIGN</span>
+                                                                            <p class="leaf-conf">Độ tin cậy: 99.6%</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- TAB 3: TRAINING & RETRAINING WORKFLOW -->
+                                    <div id="vtab-content-train" class="visual-tab-content">
+                                        <div class="sub-card-header">QUY TRÌNH HUẤN LUYỆN & CẬP NHẬT MÔ HÌNH LIÊN TỤC (CI/CD)</div>
+                                        <div class="train-workflow-container">
+                                            <div class="train-timeline">
+                                                <div class="timeline-item">
+                                                    <div class="timeline-icon">📥</div>
+                                                    <div class="timeline-content">
+                                                        <h4>Bước 1: Thu thập & Gán nhãn Dữ liệu</h4>
+                                                        <p>Tập dữ liệu EMBER khổng lồ (1.1 triệu mẫu) được phân rã cấu trúc PE, gán nhãn chính xác dựa trên kết quả quét của VirusTotal (Malware: 1, Benign: 0, Unlabeled: bỏ qua).</p>
+                                                    </div>
+                                                </div>
+                                                <div class="timeline-item">
+                                                    <div class="timeline-icon">⚖️</div>
+                                                    <div class="timeline-content">
+                                                        <h4>Bước 2: Phân tách & Chia dữ liệu</h4>
+                                                        <p>Chia tập dữ liệu theo thời gian (Time-based split) thành các tập Train (600,000 mẫu), Val (200,000 mẫu) và Test (200,000 mẫu) để chống rò rỉ dữ liệu (Data Leakage).</p>
+                                                    </div>
+                                                </div>
+                                                <div class="timeline-item">
+                                                    <div class="timeline-icon">🌲</div>
+                                                    <div class="timeline-content">
+                                                        <h4>Bước 3: Huấn luyện Thích ứng tuần tự (Gradient Boosting)</h4>
+                                                        <p>LightGBM xây dựng hàng trăm cây quyết định tuần tự. Cây sau tập trung sửa sai (residuals) cho cây trước theo phương thức toán học: $F_m(x) = F_{m-1}(x) + \eta T_m(x)$.</p>
+                                                    </div>
+                                                </div>
+                                                <div class="timeline-item">
+                                                    <div class="timeline-icon">🔄</div>
+                                                    <div class="timeline-content">
+                                                        <h4>Bước 4: Đánh giá & Cập nhật Nóng (Hot Swap)</h4>
+                                                        <p>Mô hình được chuyển đổi sang file trọng số nhẹ `.pkl`. Khi phát hiện dòng mã độc mới, mô hình được huấn luyện gia tăng (Incremental Learning) và hot-swap file `.pkl` trên Server mà không cần ngừng hoạt động.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Wizard Actions -->
+                <div class="wizard-actions">
+                    <button class="btn btn-secondary" id="btn-prev" onclick="moveSlide(-1)">⬅️ Bước Trước</button>
+                    <button class="btn btn-primary" id="btn-next" onclick="moveSlide(1)">Bước Tiếp Theo ➡️</button>
+                </div>
+            </section>
+
+            <!-- TAB 2: LIVE SANDBOX DETECTOR -->
+            <section id="tab-sandbox" class="tab-pane">
+                <header class="content-header">
+                    <h2>MALWARE SANDBOX DETECTOR</h2>
+                    <p>Hệ thống tự động phân tích cấu trúc PE, trích xuất đặc trưng thời gian thực và xếp lớp dự đoán mã độc bằng thuật toán LightGBM.</p>
+                </header>
+
+                <div class="sandbox-grid">
+                    
+                    <!-- Control Panel (Upload / Selection) -->
+                    <div class="sandbox-control-panel">
+                        <div class="glass-card">
+                            <h3>1. Chọn nguồn dữ liệu đầu vào</h3>
+                            
+                            <!-- File Upload Area -->
+                            <div class="upload-zone" id="dropzone" onclick="triggerFileInput()">
+                                <div class="upload-icon">📥</div>
+                                <p class="main-text">Kéo thả file .exe/.dll hoặc .json vào đây</p>
+                                <p class="sub-text">Hỗ trợ quét file thực thi thô HOẶC file đặc trưng JSON từ tập test</p>
+                                <input type="file" id="fileInput" accept=".exe,.dll,.json" onchange="handleFileSelect(event)" style="display: none">
+                            </div>
+
+                            <div class="divider"><span>HOẶC CHỌN MẪU DỰNG SẴN</span></div>
+
+                            <!-- Built-in Samples Carousel -->
+                            <div class="samples-selector">
+                                <button class="sample-chip benign" onclick="loadSample('putty_benign.exe')">
+                                    <span class="icon">🟢</span> putty_benign.exe
+                                </button>
+                                <button class="sample-chip malware" onclick="loadSample('wannacry_ransomware.exe')">
+                                    <span class="icon">🔴</span> wannacry_ransomware.exe
+                                </button>
+                                <button class="sample-chip benign" onclick="loadSample('chrome_installer.exe')">
+                                    <span class="icon">🟢</span> chrome_installer.exe
+                                </button>
+                                <button class="sample-chip malware" onclick="loadSample('unknown_trojan.exe')">
+                                    <span class="icon">🔴</span> unknown_trojan.exe
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Scan Console Log Monitor -->
+                        <div class="glass-card log-card">
+                            <h3>Bảng giám sát quy trình quét</h3>
+                            <div class="console-box monitor-console" id="monitor-console">
+                                <span class="c-line c-gray">[SYS] Hệ thống sẵn sàng. Chọn hoặc upload file để bắt đầu phân tích...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Diagnostics Results Card -->
+                    <div class="sandbox-results-panel">
+                        <div class="glass-card results-card" id="results-container">
+                            <div class="placeholder-result">
+                                <div class="microscope-icon">🔬</div>
+                                <h3>Đang đợi dữ liệu đầu vào...</h3>
+                                <p>Kết quả giải phẫu nhị phân và điểm số đe dọa mã độc sẽ được tính toán và hiển thị thời gian thực tại đây.</p>
+                            </div>
+                            
+                            <!-- Detailed Results Content (Hidden by default, shown when scanned) -->
+                            <div class="detailed-results" style="display: none">
+                                <div class="results-header-box">
+                                    <div class="threat-gauge-box">
+                                        <svg class="gauge-ring" viewBox="0 0 120 120">
+                                            <circle class="gauge-ring-bg" cx="60" cy="60" r="50"></circle>
+                                            <circle class="gauge-ring-fill" cx="60" cy="60" r="50" id="gauge-fill"></circle>
+                                        </svg>
+                                        <div class="gauge-value" id="threat-percent">0%</div>
+                                        <span class="gauge-label">THREAT SCORE</span>
+                                    </div>
+                                    
+                                    <div class="verdict-box">
+                                        <div class="verdict-badge" id="verdict-badge">SAFE</div>
+                                        <h4 class="filename-text" id="filename-display">filename.exe</h4>
+                                        <div class="metadata-grid" id="metadata-grid">
+                                            <!-- Injected by JS -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="results-body-box">
+                                    <!-- Classifiers Probability Breakdown -->
+                                    <div class="results-column">
+                                        <h4>Độ tự tin của các mô hình</h4>
+                                        <div class="metric-progress-wrapper">
+                                            <div class="progress-info">
+                                                <span>LightGBM (Tối ưu)</span>
+                                                <span id="score-lgb">0.0%</span>
+                                            </div>
+                                            <div class="progress-container">
+                                                <div class="progress-bar-fill bg-emerald" id="fill-lgb" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="metric-progress-wrapper">
+                                            <div class="progress-info">
+                                                <span>Random Forest</span>
+                                                <span id="score-rf">0.0%</span>
+                                            </div>
+                                            <div class="progress-container">
+                                                <div class="progress-bar-fill bg-purple" id="fill-rf" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="metric-progress-wrapper">
+                                            <div class="progress-info">
+                                                <span>Logistic Regression</span>
+                                                <span id="score-lr">0.0%</span>
+                                            </div>
+                                            <div class="progress-container">
+                                                <div class="progress-bar-fill bg-cyan" id="fill-lr" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Security Indicators List -->
+                                    <div class="results-column">
+                                        <h4>Chỉ số chuẩn đoán an ninh</h4>
+                                        <div class="indicators-list" id="indicators-list">
+                                            <!-- Injected by JS -->
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Real-time Explaining Decision Tree -->
+                                <div class="sandbox-explain-section">
+                                    <h4 class="sub-card-header" style="margin-top: 15px; margin-bottom: 10px;">🔎 BẢN ĐỒ DỰ ĐOÁN CÂY QUYẾT ĐỊNH THỜI GIAN THỰC</h4>
+                                    <p class="explain-text" style="font-size: 0.72rem; color: #94a3b8; margin-bottom: 12px; line-height: 1.3;">
+                                        Sơ đồ dưới đây tự động sáng đèn và lần vết (active path) theo đúng thuộc tính thực tế được trích xuất từ file của bạn.
+                                    </p>
+                                    <div class="lgb-tree-scroll-container" style="height: 250px;">
+                                        <div class="html-tree">
+                                            <div class="tree-node root-node">
+                                                <div class="node-box root-box" id="snode-root">
+                                                    <span class="node-tag tag-cyan">Gốc (Root)</span>
+                                                    <p class="node-cond">Entropy .text &gt; 7.15?</p>
+                                                    <span class="node-val-badge" id="sval-root">--</span>
+                                                </div>
+                                                <div class="tree-children">
+                                                    <div class="tree-child child-left" id="sbranch-left">
+                                                        <div class="branch-label text-red">Đúng</div>
+                                                        <div class="tree-node inner-node">
+                                                            <div class="node-box inner-box" id="snode-inner-left">
+                                                                <span class="node-tag tag-purple">Chữ ký số</span>
+                                                                <p class="node-cond">Không có chữ ký?</p>
+                                                                <span class="node-val-badge" id="sval-inner-left">--</span>
+                                                            </div>
+                                                            <div class="tree-children">
+                                                                <div class="tree-child child-left" id="sbranch-left-left">
+                                                                    <div class="branch-label text-red">Đúng (A.1)</div>
+                                                                    <div class="tree-node leaf-node malware-leaf" id="snode-leaf-left-left">
+                                                                        <span class="leaf-tag">MALWARE</span>
+                                                                        <p class="leaf-conf">Độ tin cậy: 99.1%</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="tree-child child-right" id="sbranch-left-right">
+                                                                    <div class="branch-label text-green">Sai (A.2)</div>
+                                                                    <div class="tree-node leaf-node benign-leaf" id="snode-leaf-left-right">
+                                                                        <span class="leaf-tag">BENIGN</span>
+                                                                        <p class="leaf-conf">Độ tin cậy: 92.4%</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="tree-child child-right" id="sbranch-right">
+                                                        <div class="branch-label text-green">Sai</div>
+                                                        <div class="tree-node inner-node">
+                                                            <div class="node-box inner-box" id="snode-inner-right">
+                                                                <span class="node-tag tag-purple">Hàm Imports</span>
+                                                                <p class="node-cond">Imports Count &lt; 15?</p>
+                                                                <span class="node-val-badge" id="sval-inner-right">--</span>
+                                                            </div>
+                                                            <div class="tree-children">
+                                                                <div class="tree-child child-left" id="sbranch-right-left">
+                                                                    <div class="branch-label text-red">Đúng (B.1)</div>
+                                                                    <div class="tree-node leaf-node malware-leaf" id="snode-leaf-right-left">
+                                                                        <span class="leaf-tag">MALWARE</span>
+                                                                        <p class="leaf-conf">Độ tin cậy: 95.4%</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="tree-child child-right" id="sbranch-right-right">
+                                                                    <div class="branch-label text-green">Sai (B.2)</div>
+                                                                    <div class="tree-node leaf-node benign-leaf" id="snode-leaf-right-right">
+                                                                        <span class="leaf-tag">BENIGN</span>
+                                                                        <p class="leaf-conf">Độ tin cậy: 99.6%</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="results-footer-actions" style="margin-top: 20px; display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; width: 100%;">
+                                    <button class="btn btn-primary" onclick="switchToXaiTab()" style="animation: pulse-glow 2s infinite;">🌳 Xem Luồng Quyết định Chi tiết (XAI) ➡️</button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- TAB 3: DECISION TREE VISUALIZER (XAI) -->
+            <section id="tab-visualization" class="tab-pane">
+                <header class="content-header">
+                    <h2>🔬 TRỰC QUAN HÓA LUỒNG QUYẾT ĐỊNH (XAI)</h2>
+                    <p>Theo dõi hoạt ảnh chạy động từ trên xuống giải thích chi tiết quá trình suy luận từng bước (Step-by-step decision path) của mô hình LightGBM.</p>
+                </header>
+
+                <div class="xai-container">
+                    <!-- Control Bar -->
+                    <div class="glass-card xai-controls">
+                        <div class="xai-control-group">
+                            <label for="xai-sample-select">Chọn tệp tin để phân tích:</label>
+                            <select id="xai-sample-select" onchange="loadXaiSample()">
+                                <option value="wannacry_ransomware.exe">wannacry_ransomware.exe (Mã độc WannaCry)</option>
+                                <option value="putty_benign.exe">putty_benign.exe (Tệp PuTTY An toàn)</option>
+                                <option value="chrome_installer.exe">chrome_installer.exe (Bộ cài Chrome An toàn)</option>
+                                <option value="unknown_trojan.exe">unknown_trojan.exe (Tệp Trojan Ẩn danh)</option>
+                                <option value="custom_file" id="xai-custom-option" style="display: none">-- Tệp tin bạn vừa tải lên --</option>
+                            </select>
+                        </div>
+                        <div class="xai-button-group">
+                            <button class="btn btn-primary" onclick="startXaiAnimation()">▶️ Chạy hoạt ảnh</button>
+                            <button class="btn btn-secondary" onclick="resetXaiAnimation()">🔁 Chạy lại</button>
+                        </div>
+                    </div>
+
+                    <div class="xai-workspace-grid">
+                        <!-- Left Column: Top-Down Decision Tree Flow -->
+                        <div class="glass-card xai-tree-card">
+                            <h3>🌳 LUỒNG QUYẾT ĐỊNH CỦA MÔ HÌNH LIGHTGBM</h3>
+                            <div class="vertical-tree-container">
+                                <div class="v-tree-root">
+                                    <!-- Level 1 -->
+                                    <div class="v-tree-row">
+                                        <div class="v-node-box" id="xnode-l1">
+                                            <div class="v-node-header header-purple">Tầng 1: Đánh giá Header</div>
+                                            <div class="v-node-cond">Đặc trưng F638 (PE Timestamp)</div>
+                                            <div class="v-node-badge" id="xval-l1">--</div>
+                                        </div>
+                                    </div>
+                                    <div class="v-path-line-vertical" id="xpath-l1"></div>
+
+                                    <!-- Level 2 -->
+                                    <div class="v-tree-row">
+                                        <div class="v-node-box" id="xnode-l2">
+                                            <div class="v-node-header header-purple">Tầng 2: Mật độ Entropy</div>
+                                            <div class="v-node-cond">Đặc trưng F503 (Khối mã hóa)</div>
+                                            <div class="v-node-badge" id="xval-l2">--</div>
+                                        </div>
+                                    </div>
+                                    <div class="v-path-line-vertical" id="xpath-l2"></div>
+
+                                    <!-- Level 3 -->
+                                    <div class="v-tree-row">
+                                        <div class="v-node-box" id="xnode-l3">
+                                            <div class="v-node-header header-purple">Tầng 3: Mật độ Entropy Phụ</div>
+                                            <div class="v-node-cond">Đặc trưng F504 (Phân bố dị thường)</div>
+                                            <div class="v-node-badge" id="xval-l3">--</div>
+                                        </div>
+                                    </div>
+                                    <div class="v-path-line-vertical" id="xpath-l3"></div>
+
+                                    <!-- Level 4 -->
+                                    <div class="v-tree-row">
+                                        <div class="v-node-box" id="xnode-l4">
+                                            <div class="v-node-header header-purple">Tầng 4: Phân tích Chuỗi</div>
+                                            <div class="v-node-cond">Đặc trưng F1344 (String Paths)</div>
+                                            <div class="v-node-badge" id="xval-l4">--</div>
+                                        </div>
+                                    </div>
+                                    <div class="v-path-line-vertical" id="xpath-l4"></div>
+
+                                    <!-- Level 5 -->
+                                    <div class="v-tree-row">
+                                        <div class="v-node-box" id="xnode-l5">
+                                            <div class="v-node-header header-purple">Tầng 5: Cấu trúc Bộ nhớ</div>
+                                            <div class="v-node-cond">Đặc trưng F2142 (Section/Imports)</div>
+                                            <div class="v-node-badge" id="xval-l5">--</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Connecting Lines to Leaves -->
+                                    <div class="v-connectors-row split-connectors" style="margin-top: 15px;">
+                                        <div class="v-sub-connectors" style="width:100%;">
+                                            <div class="v-connector-left" id="xpath-final-left">
+                                                <div class="v-path-line"></div>
+                                                <span class="v-path-label bg-red-dim">MALWARE</span>
+                                            </div>
+                                            <div class="v-connector-right" id="xpath-final-right">
+                                                <div class="v-path-line"></div>
+                                                <span class="v-path-label bg-green-dim">BENIGN</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Final Leaves -->
+                                    <div class="v-tree-row split-row leaves-row">
+                                        <div class="v-leaf-box v-malware-leaf" id="xnode-leaf-malware">
+                                            <div class="v-leaf-badge">MALWARE</div>
+                                            <div class="v-leaf-conf" id="xconf-malware">--</div>
+                                        </div>
+                                        <div class="v-leaf-box v-benign-leaf" id="xnode-leaf-benign">
+                                            <div class="v-leaf-badge">BENIGN</div>
+                                            <div class="v-leaf-conf" id="xconf-benign">--</div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Interactive Decision Explanation Board -->
+                        <div class="glass-card xai-explanation-card">
+                            <h3>📝 NHẬT KÝ RA QUYẾT ĐỊNH (XAI DECISION LOGS)</h3>
+                            <div class="xai-console-wrapper">
+                                <div class="xai-console-logs" id="xai-logs-container">
+                                    <div class="x-log-line system-line">[SYS] Sẵn sàng phân tích. Bấm nút "Chạy hoạt ảnh" ở trên để bắt đầu mô phỏng luồng quyết định top-down.</div>
+                                </div>
+                            </div>
+                            
+                            <div class="xai-metadata-summary">
+                                <h4>📊 Tóm tắt đặc trưng tệp đang phân tích</h4>
+                                <div class="xai-meta-grid" id="xai-meta-summary-grid">
+                                    <div class="xai-meta-item">Tên tệp: <span id="xmeta-name">--</span></div>
+                                    <div class="xai-meta-item">Entropy phân vùng .text: <span id="xmeta-entropy">--</span></div>
+                                    <div class="xai-meta-item">Trạng thái chữ ký số: <span id="xmeta-signature">--</span></div>
+                                    <div class="xai-meta-item">Số lượng hàm Imports: <span id="xmeta-imports">--</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Script imports -->
+    <script src="index.js"></script>
+</body>
+</html>

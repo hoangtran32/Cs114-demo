@@ -1,0 +1,327 @@
+Total cells: 39
+--- Code Cell 1 ---
+!pip install fastparquet lief
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import lightgbm as lgb
+import json
+import glob
+import os
+import gc
+import lief
+import hashlib
+import re
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix, roc_auc_score, roc_curve
+from sklearn.feature_extraction import FeatureHasher
+
+folder_path = '/kaggle/input/datasets/hoangtnh/ember-dataset'
+------------------------------
+
+--- Code Cell 6 ---
+convert_to_parquet(folder_path, "train_features_*.jsonl", "train_data.parquet")
+df_train = pd.read_parquet("train_data.parquet")
+------------------------------
+
+--- Code Cell 7 ---
+# import json
+# import pandas as pd
+
+# # 1. Mở file và đọc nội dung JSON
+# file_path = '/kaggle/working/raw_samples_web/raw_sample_benign_1.json'
+# with open(file_path, 'r', encoding='utf-8') as f:
+#     raw_data = json.load(f)
+
+# # 2. Đưa vào Extractor
+# extractor = PEFeatureExtractor()
+# full_vector = extractor.process_raw_features(raw_data)
+
+# # >>> DEBUG QUAN TRỌNG <<<
+# print(f"🔹 Độ dài vector trích xuất được hiện tại là: {len(full_vector)}")
+
+# # 3. Tạo DataFrame
+# all_cols = [f"F{i}" for i in range(len(full_vector))]
+# df_full = pd.DataFrame([full_vector], columns=all_cols)
+
+# # 4. XỬ LÝ LỖI THIẾU CỘT (Bù số 0 vào các cột mà Extractor chưa sinh ra được)
+# missing_cols = [col for col in top_200_features if col not in df_full.columns]
+# if len(missing_cols) > 0:
+#     print(f"⚠️ Đã bù số 0 cho {len(missing_cols)} cột bị thiếu, bao gồm: {missing_cols[:5]}...")
+#     for col in missing_cols:
+#         df_full[col] = 0
+
+# # 5. Lọc Top 200 đặc trưng
+# input_data = df_full[top_200_features]
+
+# # 6. Scale dữ liệu
+# input_scaled = scaler.transform(input_data)
+
+# # In thử 5 con số đầu tiên để đối chiếu với Web
+# # Lấy 5 cột quan trọng nhất từ danh sách của bạn
+# top_5_vip_cols = top_200_features[:10] 
+
+# print("🔹 Giá trị của Top 5 đặc trưng VIP nhất:")
+# # In ra dạng từ điển để dễ nhìn (trước khi Scale nhé)
+# print(input_data[top_5_vip_cols].iloc[0].to_dict())
+------------------------------
+
+--- Code Cell 9 ---
+print(df_train['Label'].value_counts()) 
+print(df_train.shape)
+------------------------------
+
+--- Code Cell 10 ---
+with open('/kaggle/input/datasets/hoangtnh/ember-dataset/train_features_0.jsonl', 'r') as f:
+    sample_json = json.loads(f.readline())
+    print("--- MẪU DỮ LIỆU JSON (TRÍCH ĐOẠN) ---")
+    print(json.dumps(sample_json['general'], indent=2)) 
+
+print("\n" + "="*50 + "\n")
+
+import pandas as pd
+df_sample = pd.read_parquet('/kaggle/working/train_data.parquet').head(5)
+print("--- MẪU DỮ LIỆU PARQUET (5 DÒNG ĐẦU) ---")
+display(df_sample.iloc[:, :10]) 
+------------------------------
+
+--- Code Cell 12 ---
+# Lấy ngẫu nhiên 50,000 mẫu để làm EDA
+df_sample = df_train.sample(n=100000, random_state=42)
+------------------------------
+
+--- Code Cell 16 ---
+import xgboost as xgb
+
+X = df_filtered.drop(columns=['Label'])
+y = df_filtered['Label']
+
+model = xgb.XGBClassifier(
+    n_estimators=500,
+    learning_rate=0.05,
+    tree_method='hist',
+    device="cpu",
+    importance_type='gain',
+    random_state=42,
+)
+model.fit(X, y)
+
+# Lấy đặc trưng quan trọng (Feature Importance)
+importance_df = pd.DataFrame({
+    'Feature': X.columns,
+    'Importance': model.feature_importances_
+}).sort_values(by='Importance', ascending=False)
+
+# Giữ lại Top 200 đặc trưng tốt nhất
+top_200_features = importance_df.head(200)['Feature'].tolist()
+print("Đã chọn xong 200 đặc trưng quan trọng nhất!")
+
+del df_filtered, X, y
+gc.collect()
+------------------------------
+
+--- Code Cell 21 ---
+features_to_keep = top_200_features + ['Label']
+df_final = df_train[features_to_keep]
+
+print(f"Kích thước tập dữ liệu mới: {df_final.shape}")
+------------------------------
+
+--- Code Cell 25 ---
+X = df_final.drop(columns=['Label'])
+y = df_final['Label']
+
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_val_scaled = scaler.transform(X_val)
+------------------------------
+
+--- Code Cell 27 ---
+models = {
+    "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
+    "Random Forest": RandomForestClassifier(n_estimators=100, n_jobs=-1, random_state=42),
+    "LightGBM": lgb.LGBMClassifier(n_estimators=500, learning_rate=0.05, random_state=42, n_jobs=-1)
+}
+
+results = {}
+
+plt.figure(figsize=(10, 8))
+
+for name, model in models.items():
+    print(f"--- Đang huấn luyện {name} ---")
+    model.fit(X_train_scaled, y_train)
+    
+    y_probs = model.predict_proba(X_val_scaled)[:, 1]
+    y_pred = model.predict(X_val_scaled)
+    
+    auc = roc_auc_score(y_val, y_probs)
+    acc = accuracy_score(y_val, y_pred)
+    results[name] = {"AUC": auc, "Accuracy": acc}
+    
+    fpr, tpr, _ = roc_curve(y_val, y_probs)
+    plt.plot(fpr, tpr, label=f'{name} (AUC = {auc:.4f})')
+
+plt.plot([0, 1], [0, 1], 'k--')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('So sánh đường cong ROC giữa các mô hình')
+plt.legend()
+plt.show()
+
+print("\nBẢNG TỔNG HỢP KẾT QUẢ TRÊN TẬP VALIDATION:")
+for name, m in results.items():
+    print(f"{name}: Accuracy = {m['Accuracy']:.4f}, ROC AUC = {m['AUC']:.4f}")
+------------------------------
+
+--- Code Cell 29 ---
+res_df = pd.DataFrame(results).T.reset_index().rename(columns={'index': 'Model'})
+
+res_df_melted = res_df.melt(id_vars='Model', var_name='Metric', value_name='Score')
+
+plt.figure(figsize=(10, 6))
+sns.barplot(data=res_df_melted, x='Model', y='Score', hue='Metric')
+plt.ylim(0.8, 1.0) 
+plt.title("So sánh Accuracy và ROC AUC giữa các mô hình")
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+------------------------------
+
+--- Code Cell 31 ---
+fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+for i, (name, model) in enumerate(models.items()):
+    y_pred = model.predict(X_val_scaled)
+    cm = confusion_matrix(y_val, y_pred)
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Purples', ax=axes[i])
+    axes[i].set_title(f'Confusion Matrix: {name}')
+    axes[i].set_xlabel('Dự đoán')
+    axes[i].set_ylabel('Thực tế')
+
+plt.tight_layout()
+plt.show()
+------------------------------
+
+--- Code Cell 35 ---
+# print("--- Đang load dữ liệu Test---")
+# convert_to_parquet(folder_path, "test_features.jsonl", "test_data.parquet")
+# df_test = pd.read_parquet("test_data.parquet", columns=top_200_features + ['Label'])
+
+# X_test_final = df_test[top_200_features]
+# y_test_final = df_test['Label']
+
+# X_test_scaled = scaler.transform(X_test_final)
+
+# best_model = models["LightGBM"]
+# y_test_pred = best_model.predict(X_test_scaled)
+# y_test_probs = best_model.predict_proba(X_test_scaled)[:, 1]
+
+# print("\n" + "="*30)
+# print("KẾT QUẢ ĐÁNH GIÁ TRÊN TẬP TEST ĐỘC LẬP")
+# print(f"Accuracy Score: {accuracy_score(y_test_final, y_test_pred):.4f}")
+# print(f"ROC AUC Score: {roc_auc_score(y_test_final, y_test_probs):.4f}")
+# print("="*30)
+
+# print("\nClassification Report:")
+# print(classification_report(y_test_final, y_test_pred))
+
+# plt.figure(figsize=(6,5))
+# sns.heatmap(confusion_matrix(y_test_final, y_test_pred), annot=True, fmt='d', cmap='Greens')
+# plt.xlabel('Dự đoán (Predicted)')
+# plt.ylabel('Thực tế (Actual)')
+# plt.title('Confusion Matrix trên tập Test gốc của EMBER')
+# plt.show()
+------------------------------
+
+--- Code Cell 36 ---
+import joblib
+import json
+
+# 1. Lưu Model (File nặng, chứa tham số thuật toán)
+joblib.dump(models['LightGBM'], 'malware_model.pkl')
+
+# 2. Lưu danh sách Features (File nhẹ, chứa tên các cột theo đúng thứ tự)
+# Giả sử danh sách tên cột của bạn nằm trong biến top_200_features
+with open('features_list.json', 'w', encoding='utf-8') as f:
+    json.dump(top_200_features, f, ensure_ascii=False, indent=4)
+
+print("Đã chuẩn bị xong 2 file. Hãy vào mục Output để Download!")
+------------------------------
+
+--- Code Cell 37 ---
+# Giả sử 'scaler' là biến bạn đã fit trên tập huấn luyện (X_train_selected)
+# Lưu ý: Scaler phải được fit trên ĐÚNG 200 đặc trưng mà bạn dùng để train model
+scaler_filename = 'scaler.pkl'
+joblib.dump(scaler, scaler_filename)
+
+print(f"Đã lưu bộ chuẩn hóa tại: {scaler_filename}")
+------------------------------
+
+--- Code Cell 38 ---
+# import json
+# import os
+
+# def extract_raw_ember_samples(raw_jsonl_path, num_malware=5, num_benign=5, output_dir='raw_samples_web'):
+#     """
+#     Hàm đọc file .jsonl gốc của EMBER và trích xuất ra các file .json mẫu.
+#     """
+#     # Tạo thư mục chứa file sample
+#     if not os.path.exists(output_dir):
+#         os.makedirs(output_dir)
+        
+#     malware_count = 0
+#     benign_count = 0
+    
+#     print(f"Đang đọc file thô: {raw_jsonl_path}...")
+    
+#     # Đọc file jsonl từng dòng một (giúp không bị tràn RAM)
+#     with open(raw_jsonl_path, 'r', encoding='utf-8') as f:
+#         for line in f:
+#             # Nếu đã đủ số lượng cả hai loại thì dừng lại
+#             if malware_count >= num_malware and benign_count >= num_benign:
+#                 break
+                
+#             try:
+#                 # Chuyển chuỗi dòng thành dictionary
+#                 data = json.loads(line.strip())
+                
+#                 # Trong bộ EMBER thô, key 'label' lưu nhãn: 1 (Malware), 0 (Benign)
+#                 label = data.get('label', -1)
+                
+#                 # Trích xuất mẫu Malware
+#                 if label == 1 and malware_count < num_malware:
+#                     malware_count += 1
+#                     filename = f"raw_sample_malware_{malware_count}.json"
+#                     filepath = os.path.join(output_dir, filename)
+#                     with open(filepath, 'w', encoding='utf-8') as out_f:
+#                         json.dump(data, out_f, indent=4)
+                        
+#                 # Trích xuất mẫu Benign (An toàn)
+#                 elif label == 0 and benign_count < num_benign:
+#                     benign_count += 1
+#                     filename = f"raw_sample_benign_{benign_count}.json"
+#                     filepath = os.path.join(output_dir, filename)
+#                     with open(filepath, 'w', encoding='utf-8') as out_f:
+#                         json.dump(data, out_f, indent=4)
+                        
+#             except Exception as e:
+#                 print(f"Lỗi khi đọc 1 dòng: {e}")
+#                 continue
+                
+#     print("✅ HOÀN TẤT TRÍCH XUẤT!")
+#     print(f"Đã lưu {malware_count} file Malware và {benign_count} file Benign vào thư mục '{output_dir}/'")
+
+# # --- CÁCH SỬ DỤNG ---
+# # Thay đường dẫn dưới đây bằng đường dẫn tới file dữ liệu gốc của bạn trên Kaggle
+# # Ví dụ: '/kaggle/input/ember-dataset/test_features.jsonl'
+# duong_dan_file_goc = '/kaggle/input/datasets/hoangtnh/ember-dataset/test_features.jsonl' # Sửa lại đường dẫn này cho đúng với dataset của bạn
+
+# # Gọi hàm để lấy 5 mẫu malware và 5 mẫu benign
+# extract_raw_ember_samples(raw_jsonl_path=duong_dan_file_goc, num_malware=5, num_benign=5)
+------------------------------
+

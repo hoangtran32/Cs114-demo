@@ -1,0 +1,191 @@
+\begin{thebibliography}{10}
+
+\bibitem{virustotal}
+Virustotal-free online virus, malware and url scanner.
+\newblock \url{https://www.virustotal.com/en}.
+\newblock Accessed: 2018-03-09.
+
+\bibitem{vxheaven}
+{VX Heaven} virus collection.
+\newblock \url{http://83.133.184.251/virensimulation.org/index.html}.
+\newblock Accessed: 2018-03-09.
+
+\bibitem{PEformat}
+Wikipedia.
+\newblock
+  \url{https://upload.wikimedia.org/wikipedia/commons/1/1b/Portable_Executable_32_bit_Structure_in_SVG_fixed.svg}.
+\newblock Accessed: 2018-04-09.
+
+\bibitem{athiwaratkun2017malware}
+B.~Athiwaratkun and J.~W. Stokes.
+\newblock Malware classification with {LSTM} and {GRU} language models and a
+  character-level {CNN}.
+\newblock In {\em Acoustics, Speech and Signal Processing (ICASSP), 2017 IEEE
+  International Conference on}, pages 2482--2486. IEEE, 2017.
+
+\bibitem{brand2010malware}
+M.~Brand, C.~Valli, and A.~Woodward.
+\newblock Malware forensics: Discovery of the intent of deception.
+\newblock {\em The Journal of Digital Forensics, Security and Law: JDFSL},
+  5(4):31, 2010.
+
+\bibitem{buhrmester2011amazon}
+M.~Buhrmester, T.~Kwang, and S.~D. Gosling.
+\newblock Amazon's mechanical turk: A new source of inexpensive, yet
+  high-quality, data?
+\newblock {\em Perspectives on psychological science}, 6(1):3--5, 2011.
+
+\bibitem{cohen1987computer}
+F.~Cohen.
+\newblock {Computer Viruses: Theory and Experiments}.
+\newblock {\em {Computers \& Security}}, 6(1), 1987.
+
+\bibitem{cohen1995fast}
+W.~W. Cohen.
+\newblock Fast effective rule induction.
+\newblock In {\em Proceedings of the twelfth international conference on
+  machine learning}, pages 115--123, 1995.
+
+\bibitem{dahl2013large}
+G.~E. Dahl, J.~W. Stokes, L.~Deng, and D.~Yu.
+\newblock Large-scale malware classification using random projections and
+  neural networks.
+\newblock In {\em Acoustics, Speech and Signal Processing (ICASSP), 2013 IEEE
+  International Conference on}, pages 3422--3426. IEEE, 2013.
+
+\bibitem{imagenet}
+J.~Deng, W.~Dong, R.~Socher, L.-J. Li, K.~Li, and L.~Fei-Fei.
+\newblock Imagenet: A large-scale hierarchical image database.
+\newblock In {\em Computer Vision and Pattern Recognition, 2009. CVPR 2009.
+  IEEE Conference on}, pages 248--255. IEEE, 2009.
+
+\bibitem{devi2012pe}
+D.~Devi and S.~Nandi.
+\newblock Pe file features in detection of packed executables.
+\newblock {\em International Journal of Computer Theory and Engineering},
+  4(3):476, 2012.
+
+\bibitem{sentiment140}
+A.~Go, R.~Bhayani, and L.~Huang.
+\newblock Twitter sentiment classification using distant supervision.
+\newblock {\em CS224N Project Report, Stanford}, 1(12), 2009.
+
+\bibitem{trafficsigns}
+S.~Houben, J.~Stallkamp, J.~Salmen, M.~Schlipsing, and C.~Igel.
+\newblock Detection of traffic signs in real-world images: The german traffic
+  sign detection benchmark.
+\newblock In {\em Neural Networks (IJCNN), The 2013 International Joint
+  Conference on}, pages 1--8. IEEE, 2013.
+
+\bibitem{ke2017lightgbm}
+G.~Ke, Q.~Meng, T.~Finley, T.~Wang, W.~Chen, W.~Ma, Q.~Ye, and T.-Y. Liu.
+\newblock Lightgbm: A highly efficient gradient boosting decision tree.
+\newblock In {\em Advances in Neural Information Processing Systems}, pages
+  3149--3157, 2017.
+
+\bibitem{kolter2004learning}
+J.~Z. Kolter and M.~A. Maloof.
+\newblock Learning to detect malicious executables in the wild.
+\newblock In {\em Proceedings of the tenth ACM SIGKDD international conference
+  on Knowledge discovery and data mining}, pages 470--478. ACM, 2004.
+
+\bibitem{CIFAR}
+A.~Krizhevsky, I.~Sutskever, and G.~E. Hinton.
+\newblock Imagenet classification with deep convolutional neural networks.
+\newblock In {\em Advances in neural information processing systems}, pages
+  1097--1105, 2012.
+
+\bibitem{MNIST}
+Y.~LeCun, L.~Bottou, Y.~Bengio, and P.~Haffner.
+\newblock Gradient-based learning applied to document recognition.
+\newblock {\em Proceedings of the IEEE}, 86(11):2278--2324, 1998.
+
+\bibitem{pascanu2015malware}
+R.~Pascanu, J.~W. Stokes, H.~Sanossian, M.~Marinescu, and A.~Thomas.
+\newblock Malware classification with recurrent networks.
+\newblock In {\em Acoustics, Speech and Signal Processing (ICASSP), 2015 IEEE
+  International Conference on}, pages 1916--1920. IEEE, 2015.
+
+\bibitem{scikit-learn}
+F.~Pedregosa, G.~Varoquaux, A.~Gramfort, V.~Michel, B.~Thirion, O.~Grisel,
+  M.~Blondel, P.~Prettenhofer, R.~Weiss, V.~Dubourg, J.~Vanderplas, A.~Passos,
+  D.~Cournapeau, M.~Brucher, M.~Perrot, and E.~Duchesnay.
+\newblock Scikit-learn: Machine learning in {P}ython.
+\newblock {\em Journal of Machine Learning Research}, 12:2825--2830, 2011.
+
+\bibitem{pietrek2002inside}
+M.~Pietrek.
+\newblock Inside windows-an in-depth look into the win32 portable executable
+  file format.
+\newblock {\em MSDN magazine}, 17(2), 2002.
+
+\bibitem{LIEF}
+Quarkslab.
+\newblock {LIEF}: library for instrumenting executable files.
+\newblock \url{https://lief.quarkslab.com/}, 2017--2018.
+
+\bibitem{raff2017malware}
+E.~Raff, J.~Barker, J.~Sylvester, R.~Brandon, B.~Catanzaro, and C.~Nicholas.
+\newblock Malware detection by eating a whole exe.
+\newblock {\em arXiv preprint arXiv:1710.09435}, 2017.
+
+\bibitem{raman2012selecting}
+K.~Raman et~al.
+\newblock Selecting features to classify malware.
+\newblock {\em InfoSec Southwest}, 2012, 2012.
+
+\bibitem{virusshare}
+J.-M. Roberts.
+\newblock {VirusShare}.
+\newblock \url{https://virusshare.com}.
+\newblock Accessed: 2018-03-09.
+
+\bibitem{ronen2018microsoft}
+R.~Ronen, M.~Radu, C.~Feuerstein, E.~Yom-Tov, and M.~Ahmadi.
+\newblock Microsoft malware classification challenge.
+\newblock {\em arXiv preprint arXiv:1802.10135}, 2018.
+
+\bibitem{saxe2015deep}
+J.~Saxe and K.~Berlin.
+\newblock Deep neural network based malware detection using two dimensional
+  binary program features.
+\newblock In {\em Malicious and Unwanted Software (MALWARE), 2015 10th
+  International Conference on}, pages 11--20. IEEE, 2015.
+
+\bibitem{schultz2001data}
+M.~G. Schultz, E.~Eskin, F.~Zadok, and S.~J. Stolfo.
+\newblock Data mining methods for detection of new malicious executables.
+\newblock In {\em Security and Privacy, 2001. S\&P 2001. Proceedings. 2001 IEEE
+  Symposium on}, pages 38--49. IEEE, 2001.
+
+\bibitem{seymour2016howto}
+J.~Seymour and C.~Nicholas.
+\newblock How to build a malware classifier.
+\newblock In {\em Security Education Conference Toronto}, October 2016.
+
+\bibitem{shafiq2009framework}
+M.~Z. Shafiq, S.~M. Tabish, F.~Mirza, and M.~Farooq.
+\newblock A framework for efficient mining of structural information to detect
+  zero-day malicious portable executables.
+\newblock Technical report, Technical Report, TR-nexGINRC-2009-21, January,
+  2009, available at http://www. nexginrc. org/papers/tr21-zubair. pdf, 2009.
+
+\bibitem{shafiq2009pe}
+M.~Z. Shafiq, S.~M. Tabish, F.~Mirza, and M.~Farooq.
+\newblock Pe-miner: Mining structural information to detect malicious
+  executables in realtime.
+\newblock In {\em International Workshop on Recent Advances in Intrusion
+  Detection}, pages 121--141. Springer, 2009.
+
+\bibitem{weinberger2009feature}
+K.~Weinberger, A.~Dasgupta, J.~Langford, A.~Smola, and J.~Attenberg.
+\newblock Feature hashing for large scale multitask learning.
+\newblock In {\em Proceedings of the 26th Annual International Conference on
+  Machine Learning}, pages 1113--1120. ACM, 2009.
+
+\bibitem{TIMIT}
+V.~Zue, S.~Seneff, and J.~Glass.
+\newblock Speech database development at mit: Timit and beyond.
+\newblock {\em Speech Communication}, 9(4):351--356, 1990.
+
+\end{thebibliography}

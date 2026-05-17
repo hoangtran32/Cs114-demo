@@ -1,0 +1,74 @@
+\documentclass[sigconf]{acmart}
+
+\settopmatter{printacmref=false}
+
+\fancyhf{} % Remove fancy page headers                                                      
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{makecell}
+\usepackage{float}
+\usepackage{graphicx}
+
+\usepackage{listings}
+\usepackage{bera}
+
+\lstset{basicstyle=\ttfamily,
+escapeinside={||},
+mathescape=true}
+
+
+% change references here
+\newcommand{\SOURCECODE}{\url{https://github.com/endgameinc/ember}}
+\newcommand{\DATASET}{\url{https://pubdata.endgame.com/ember/ember_dataset.tar.bz2}}
+
+
+\begin{document}
+
+\title{EMBER: An Open Dataset for Training Static PE Malware Machine Learning Models}
+
+	\author{Hyrum S.~Anderson}
+	\affiliation{ \institution{ Endgame, Inc.} }
+	\email{hyrum@endgame.com}
+
+	\author{Phil Roth}
+    \affiliation{ \institution{ Endgame, Inc.} }
+    \email{proth@endgame.com}
+    
+
+\begin{abstract}
+\input{abstract}
+\end{abstract}
+
+
+\keywords{malicious/benign dataset, machine learning, static analysis}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+\input{introduction}
+
+\section{Background}
+\label{sec:background}
+\input{background}
+
+\pagebreak[3]
+\section{Data Description}
+\label{sec:method}
+\input{method}
+
+\section{Experiments}
+\label{sec:results}
+\input{results}
+
+\section{Discussion}
+\label{sec:conclusion}
+\input{conclusion}
+
+\pagebreak[4]
+\section*{Acknowledgements}
+The authors wish to thank Peter Silberman for his careful review of the code repository and dataset, with useful suggestions for improvement.
+
+\bibliographystyle{abbrv}
+\bibliography{ref}
+\end{document}
