@@ -7,6 +7,15 @@ let currentSlide = 0;
 const totalSlides = 6;
 let cachedPipelineData = null;
 
+// Global UI State
+let currentTab = 'sandbox';
+let isSidebarCollapsed = false;
+
+// Cấu hình đường dẫn Backend API
+// Khi chạy từ Flask (localhost:5000): để rỗng '' (same-origin)
+// Khi đẩy lên Render + GitHub Pages: đổi thành URL Render
+const API_BASE_URL = '';
+
 // Initialize app on load
 window.addEventListener('DOMContentLoaded', () => {
     initParticles();
@@ -249,7 +258,7 @@ function triggerStepAnimations(stepIdx) {
 
 // Fetch general pipeline analysis values from python backend
 function fetchPipelineData() {
-    fetch('/api/pipeline')
+    fetch(`${API_BASE_URL}/api/pipeline`)
         .then(response => response.json())
         .then(data => {
             cachedPipelineData = data;
@@ -290,25 +299,37 @@ function setupPipelineFallbacks() {
             ]
         },
         "models_comparison": {
-            "categories": ["Accuracy", "ROC AUC"],
+            "categories": ["Accuracy", "Precision", "Recall", "F1-score", "ROC AUC"],
             "models": [
                 {
-                    "name": "Logistic Regression",
-                    "metrics": [83.28, 90.8],
-                    "confusion_matrix": [[78452, 21548], [11892, 88108]],
-                    "color": "#06b6d4"
+                    "name": "Random Forest",
+                    "metrics": [97.36, 97.83, 96.87, 97.35, 99.68],
+                    "color": "#10b981"
                 },
                 {
-                    "name": "Random Forest",
-                    "metrics": [97.36, 99.69],
-                    "confusion_matrix": [[97820, 2180], [3100, 96900]],
-                    "color": "#8b5cf6"
+                    "name": "CatBoost",
+                    "metrics": [96.84, 96.96, 96.73, 96.84, 99.53],
+                    "color": "#f59e0b"
+                },
+                {
+                    "name": "XGBoost",
+                    "metrics": [96.05, 96.03, 96.08, 96.05, 99.34],
+                    "color": "#ef4444"
                 },
                 {
                     "name": "LightGBM",
-                    "metrics": [96.28, 99.42],
-                    "confusion_matrix": [[95922, 4078], [3362, 96638]],
-                    "color": "#10b981"
+                    "metrics": [94.65, 94.49, 94.84, 94.66, 98.88],
+                    "color": "#06b6d4"
+                },
+                {
+                    "name": "AdaBoost",
+                    "metrics": [86.53, 85.54, 87.95, 86.73, 94.26],
+                    "color": "#8b5cf6"
+                },
+                {
+                    "name": "Logistic Regression",
+                    "metrics": [85.14, 83.24, 88.05, 85.58, 92.65],
+                    "color": "#ec4899"
                 }
             ]
         }
@@ -734,7 +755,7 @@ function uploadFile(file) {
         const formData = new FormData();
         formData.append('file', file);
         
-        fetch('/api/predict', {
+        fetch(`${API_BASE_URL}/api/predict`, {
             method: 'POST',
             body: formData
         })
@@ -774,10 +795,10 @@ function loadSample(sampleName) {
     
     logScanSequence('monitor-console', sampleName, () => {
         // Send sample request to API
-        fetch('/api/predict', {
+        fetch(`${API_BASE_URL}/api/predict`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: json = JSON.stringify({sample: sampleName})
+            body: JSON.stringify({sample: sampleName})
         })
         .then(response => response.json())
         .then(data => {
@@ -792,7 +813,7 @@ function loadSample(sampleName) {
 
 // Simulate prediction fallback if python HTTP endpoint fails (standalone operations)
 function simulateScanFallback(filename) {
-    const isMalware = filename.toLowerCase().includes('ransomware') || filename.toLowerCase().includes('trojan');
+    const isMalware = filename.toLowerCase().includes('malware') || filename.toLowerCase().includes('ransomware') || filename.toLowerCase().includes('trojan');
     const score = isMalware ? (85 + Math.random() * 14) : (1 + Math.random() * 8);
     
     const fallbackData = {
@@ -800,8 +821,11 @@ function simulateScanFallback(filename) {
         "verdict": isMalware ? "DANGEROUS / MALWARE" : "SAFE / BENIGN",
         "threat_score": parseFloat(score.toFixed(1)),
         "model_scores": {
-            "LightGBM": score / 100,
             "Random Forest": (score + (isMalware ? -2 : 1)) / 100,
+            "CatBoost": (score + (isMalware ? -3 : 0.5)) / 100,
+            "XGBoost": (score + (isMalware ? -1 : 1.5)) / 100,
+            "LightGBM": score / 100,
+            "AdaBoost": (score * (isMalware ? 0.65 : 4.5)) / 100,
             "Logistic Regression": (score + (isMalware ? -15 : 12)) / 100
         },
         "file_metadata": {
@@ -816,7 +840,7 @@ function simulateScanFallback(filename) {
         },
         "indicators": isMalware ? [
             {"type": "danger", "message": "Digital signature is missing / unsigned executable."},
-            {"type": "danger", "message": "High entropy section detected (entropy: 7.91) - likely packed payload."},
+            {"type": "danger", "message": "High entropy section detected (entropy: 7.91) — likely packed payload."},
             {"type": "danger", "message": "Suspicious API imports found (UrlDownloadToFile, InternetOpen)."}
         ] : [
             {"type": "info", "message": "File is digitally signed and verified."},
@@ -920,24 +944,23 @@ function renderSandboxResults(data) {
         consoleBox.appendChild(infoLine);
     }
     
-    // Classifiers Horizontal Bars Fill
-    const fillLgb = document.getElementById('fill-lgb');
-    const fillRf = document.getElementById('fill-rf');
-    const fillLr = document.getElementById('fill-lr');
-    
-    const lgbScore = (data.model_scores.LightGBM * 100) || 0;
-    const rfScore = (data.model_scores["Random Forest"] * 100) || (data.model_scores.Random_Forest * 100) || 0;
-    const lrScore = (data.model_scores["Logistic Regression"] * 100) || (data.model_scores.Logistic_Regression * 100) || 0;
-    
-    document.getElementById('score-lgb').textContent = `${lgbScore.toFixed(1)}%`;
-    document.getElementById('score-rf').textContent = `${rfScore.toFixed(1)}%`;
-    document.getElementById('score-lr').textContent = `${lrScore.toFixed(1)}%`;
-    
-    setTimeout(() => {
-        fillLgb.style.width = `${lgbScore}%`;
-        fillRf.style.width = `${rfScore}%`;
-        fillLr.style.width = `${lrScore}%`;
-    }, 150);
+    // Classifiers Horizontal Bars Fill — all 6 baseline models
+    const modelMap = [
+        { key: "Random Forest",       scoreId: "score-rf",  fillId: "fill-rf"  },
+        { key: "CatBoost",            scoreId: "score-cat", fillId: "fill-cat" },
+        { key: "XGBoost",             scoreId: "score-xgb", fillId: "fill-xgb" },
+        { key: "LightGBM",            scoreId: "score-lgb", fillId: "fill-lgb" },
+        { key: "AdaBoost",            scoreId: "score-ada", fillId: "fill-ada" },
+        { key: "Logistic Regression", scoreId: "score-lr",  fillId: "fill-lr"  },
+    ];
+
+    modelMap.forEach(m => {
+        const pct = ((data.model_scores[m.key] || 0) * 100);
+        const scoreEl = document.getElementById(m.scoreId);
+        const fillEl = document.getElementById(m.fillId);
+        if (scoreEl) scoreEl.textContent = `${pct.toFixed(1)}%`;
+        if (fillEl) setTimeout(() => { fillEl.style.width = `${pct}%`; }, 150);
+    });
     
     // Render Diagnostics Security Indicators list
     const indicatorsBox = document.getElementById('indicators-list');

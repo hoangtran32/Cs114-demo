@@ -1,0 +1,18 @@
+{
+    "model_type": "Baseline",
+    "best_model_name": "Random Forest",
+    "feature_file": "features_list.json",
+    "scaler_file": "scaler.pkl",
+    "best_model_file": "best_baseline_model.pkl",
+    "all_model_files": {
+        "Logistic Regression": "logistic_regression_baseline.pkl",
+        "Random Forest": "random_forest_baseline.pkl",
+        "LightGBM": "lightgbm_baseline.pkl",
+        "AdaBoost": "adaboost_baseline.pkl",
+        "CatBoost": "catboost_baseline.pkl",
+        "XGBoost": "xgboost_baseline.pkl"
+    },
+    "metrics_file": "baseline_results.csv",
+    "target_column": "Label",
+    "num_features": 200
+}

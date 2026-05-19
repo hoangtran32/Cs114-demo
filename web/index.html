@@ -44,7 +44,7 @@
                 <div class="status-indicator online"></div>
                 <div class="status-text">
                     <p>Hệ thống Model</p>
-                    <span>ONLINE (LightGBM)</span>
+                    <span>ONLINE (6 Baselines)</span>
                 </div>
             </div>
         </aside>
@@ -56,7 +56,7 @@
             <section id="tab-dashboard" class="tab-pane active">
                 <header class="content-header">
                     <h2>MALWARE ML PIPELINE WALKTHROUGH</h2>
-                    <p>Khám phá trực quan từng bước biến đổi dữ liệu từ tập dữ liệu EMBER sang mô hình học máy phát hiện mã độc tối tân.</p>
+                    <p>Khám phá trực quan pipeline học máy phân loại mã độc trên EMBER dataset — từ trích xuất đặc trưng đến huấn luyện 6 mô hình baseline.</p>
                 </header>
 
                 <!-- Pipeline Steps Navigation Dots/Bar -->
@@ -525,24 +525,54 @@
                                 <div class="results-body-box">
                                     <!-- Classifiers Probability Breakdown -->
                                     <div class="results-column">
-                                        <h4>Độ tự tin của các mô hình</h4>
+                                        <h4>Độ tự tin của các mô hình (6 Baseline)</h4>
                                         <div class="metric-progress-wrapper">
                                             <div class="progress-info">
-                                                <span>LightGBM (Tối ưu)</span>
-                                                <span id="score-lgb">0.0%</span>
+                                                <span>🏆 Random Forest (Best)</span>
+                                                <span id="score-rf">0.0%</span>
                                             </div>
                                             <div class="progress-container">
-                                                <div class="progress-bar-fill bg-emerald" id="fill-lgb" style="width: 0%"></div>
+                                                <div class="progress-bar-fill bg-emerald" id="fill-rf" style="width: 0%"></div>
                                             </div>
                                         </div>
                                         
                                         <div class="metric-progress-wrapper">
                                             <div class="progress-info">
-                                                <span>Random Forest</span>
-                                                <span id="score-rf">0.0%</span>
+                                                <span>CatBoost</span>
+                                                <span id="score-cat">0.0%</span>
                                             </div>
                                             <div class="progress-container">
-                                                <div class="progress-bar-fill bg-purple" id="fill-rf" style="width: 0%"></div>
+                                                <div class="progress-bar-fill bg-amber" id="fill-cat" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="metric-progress-wrapper">
+                                            <div class="progress-info">
+                                                <span>XGBoost</span>
+                                                <span id="score-xgb">0.0%</span>
+                                            </div>
+                                            <div class="progress-container">
+                                                <div class="progress-bar-fill bg-red" id="fill-xgb" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="metric-progress-wrapper">
+                                            <div class="progress-info">
+                                                <span>LightGBM</span>
+                                                <span id="score-lgb">0.0%</span>
+                                            </div>
+                                            <div class="progress-container">
+                                                <div class="progress-bar-fill bg-cyan" id="fill-lgb" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="metric-progress-wrapper">
+                                            <div class="progress-info">
+                                                <span>AdaBoost</span>
+                                                <span id="score-ada">0.0%</span>
+                                            </div>
+                                            <div class="progress-container">
+                                                <div class="progress-bar-fill bg-purple" id="fill-ada" style="width: 0%"></div>
                                             </div>
                                         </div>
 
@@ -552,7 +582,7 @@
                                                 <span id="score-lr">0.0%</span>
                                             </div>
                                             <div class="progress-container">
-                                                <div class="progress-bar-fill bg-cyan" id="fill-lr" style="width: 0%"></div>
+                                                <div class="progress-bar-fill bg-pink" id="fill-lr" style="width: 0%"></div>
                                             </div>
                                         </div>
                                     </div>

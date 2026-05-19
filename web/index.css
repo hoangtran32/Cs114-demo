@@ -1302,6 +1302,21 @@ body {
     box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
 }
 
+.bg-amber {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+.bg-red {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.bg-pink {
+    background: linear-gradient(90deg, #ec4899, #f472b6);
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.3);
+}
+
 /* Indicators List styling */
 .indicators-list {
     display: flex;
