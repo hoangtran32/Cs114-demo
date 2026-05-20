@@ -1,822 +1,1263 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMBER AI: Trình phân tích & Phát hiện Malware PE trực quan</title>
-    <meta name="description" content="Trải nghiệm và tương tác trực quan toàn bộ pipeline học máy phân loại mã độc sử dụng bộ dữ liệu EMBER và mô hình LightGBM/Random Forest">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="index.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MalwareML — Threat Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="index.css">
 </head>
 <body>
-    <!-- Custom Particle Mesh Background Canvas -->
-    <canvas id="particleCanvas"></canvas>
+<div class="layout">
 
-    <!-- App Container -->
-    <div class="app-container">
-        
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar">
-            <div class="brand">
-                <div class="logo-icon">🛡️</div>
-                <div class="brand-text">
-                    <h1>EMBER AI</h1>
-                    <span>MALWARE DETECTOR</span>
-                </div>
-            </div>
-            
-            <nav class="nav-menu">
-                <button class="nav-btn active" id="nav-dashboard" onclick="switchTab('dashboard')">
-                    <span class="icon">📊</span> Tổng quan & Pipeline
-                </button>
-                <button class="nav-btn" id="nav-sandbox" onclick="switchTab('sandbox')">
-                    <span class="icon">🔬</span> Sandbox Dự đoán PE
-                </button>
-                <button class="nav-btn" id="nav-visualization" onclick="switchTab('visualization')">
-                    <span class="icon">🌳</span> Trực quan Quyết định (XAI)
-                </button>
-            </nav>
-
-            <div class="system-status">
-                <div class="status-indicator online"></div>
-                <div class="status-text">
-                    <p>Hệ thống Model</p>
-                    <span>ONLINE (6 Baselines)</span>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Main Content Area -->
-        <main class="main-content">
-            
-            <!-- TAB 1: DASHBOARD & PIPELINE WALKTHROUGH -->
-            <section id="tab-dashboard" class="tab-pane active">
-                <header class="content-header">
-                    <h2>MALWARE ML PIPELINE WALKTHROUGH</h2>
-                    <p>Khám phá trực quan pipeline học máy phân loại mã độc trên EMBER dataset — từ trích xuất đặc trưng đến huấn luyện 6 mô hình baseline.</p>
-                </header>
-
-                <!-- Pipeline Steps Navigation Dots/Bar -->
-                <div class="pipeline-bar">
-                    <div class="pipeline-progress-line" id="pipeline-progress-line"></div>
-                    <div class="step-node active" onclick="goToStep(0)" data-step="0">
-                        <div class="node-dot">1</div>
-                        <span>Trích xuất PE</span>
-                    </div>
-                    <div class="step-node" onclick="goToStep(1)" data-step="1">
-                        <div class="node-dot">2</div>
-                        <span>Lưu Parquet</span>
-                    </div>
-                    <div class="step-node" onclick="goToStep(2)" data-step="2">
-                        <div class="node-dot">3</div>
-                        <span>Làm sạch</span>
-                    </div>
-                    <div class="step-node" onclick="goToStep(3)" data-step="3">
-                        <div class="node-dot">4</div>
-                        <span>Lựa chọn</span>
-                    </div>
-                    <div class="step-node" onclick="goToStep(4)" data-step="4">
-                        <div class="node-dot">5</div>
-                        <span>EDA & KDE</span>
-                    </div>
-                    <div class="step-node" onclick="goToStep(5)" data-step="5">
-                        <div class="node-dot">6</div>
-                        <span>So sánh Model</span>
-                    </div>
-                </div>
-
-                <!-- Pipeline Slides Container -->
-                <div class="pipeline-wizard">
-                    
-                    <!-- STEP 1: RAW PE & FEATURE EXTRACTION -->
-                    <div class="wizard-slide active" id="slide-0">
-                        <div class="slide-grid">
-                            <div class="slide-info">
-                                <span class="step-badge">BƯỚC 1</span>
-                                <h3>Trích xuất Đặc trưng PE & Cấu trúc EMBER</h3>
-                                <p>Một file thực thi Windows Portable Executable (PE) chứa hàng nghìn trường dữ liệu phức tạp. Để đưa vào mô hình Machine Learning, chúng tôi chuyển đổi mã nhị phân thô thành các trường thông tin có cấu trúc.</p>
-                                <p>Sử dụng phương pháp trích xuất đặc trưng của thư viện <strong>EMBER</strong>, cấu trúc PE được ánh xạ thành <strong>2,381 đặc trưng số</strong> thuộc 9 nhóm thông tin chính:</p>
-                                <ul class="feature-groups">
-                                    <li><strong>Byte Histogram (256):</strong> Phân bố tần suất xuất hiện của các byte.</li>
-                                    <li><strong>Byte Entropy (256):</strong> Độ đo sự hỗn loạn của dữ liệu nhị phân.</li>
-                                    <li><strong>Section Info (255):</strong> Kích thước, thuộc tính và entropy của các phân vùng (.text, .data...).</li>
-                                    <li><strong>Imports/Exports Info (1408):</strong> Danh sách thư viện liên kết động và hàm API được gọi.</li>
-                                    <li><strong>Header, General, Strings:</strong> Metadata kỹ thuật, chuỗi ký tự in được.</li>
-                                </ul>
-                            </div>
-                            <div class="slide-visual">
-                                <div class="visual-card">
-                                    <div class="card-header">
-                                        <span>BẢN ĐỒ GIẢI PHẪU FILE PE</span>
-                                        <div class="pulse-indicator"></div>
-                                    </div>
-                                    <div class="anatomy-visualizer">
-                                        <div class="bin-item" style="animation-delay: 0.1s">
-                                            <span class="bin-label">DOS Header (Magic: MZ)</span>
-                                            <div class="bin-bar" style="width: 15%"></div>
-                                        </div>
-                                        <div class="bin-item style-blue" style="animation-delay: 0.3s">
-                                            <span class="bin-label">PE Header & File Headers</span>
-                                            <div class="bin-bar" style="width: 35%"></div>
-                                        </div>
-                                        <div class="bin-item style-purple" style="animation-delay: 0.5s">
-                                            <span class="bin-label">Section Table (Properties / Flags)</span>
-                                            <div class="bin-bar" style="width: 60%"></div>
-                                        </div>
-                                        <div class="bin-item style-green" style="animation-delay: 0.7s">
-                                            <span class="bin-label">Binary Sections (.text, .rdata, .data...)</span>
-                                            <div class="bin-bar" style="width: 90%"></div>
-                                        </div>
-                                        <div class="bin-item style-orange" style="animation-delay: 0.9s">
-                                            <span class="bin-label">Imports Directory (APIs)</span>
-                                            <div class="bin-bar" style="width: 45%"></div>
-                                        </div>
-                                    </div>
-                                    <div class="console-box" id="step1-console">
-                                        <span class="c-line">[EXTRACTOR] Đang phân tích file nhị phân...</span>
-                                        <span class="c-line c-green">[SUCCESS] Trích xuất thành công 2,381 chiều đặc trưng.</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- STEP 2: PARQUET COMPRESSION -->
-                    <div class="wizard-slide" id="slide-1">
-                        <div class="slide-grid">
-                            <div class="slide-info">
-                                <span class="step-badge">BƯỚC 2</span>
-                                <h3>Chuyển đổi dữ liệu sang định dạng Parquet</h3>
-                                <p>Tập dữ liệu EMBER gốc gồm 1.1 triệu mẫu được lưu trữ dưới dạng JSONL (văn bản bán cấu trúc). Định dạng này cực kỳ cồng kềnh, tốn dung lượng bộ nhớ và rất chậm khi xử lý truy vấn học máy.</p>
-                                <p>Chúng tôi tiến hành tối ưu hóa bằng cách chuyển đổi toàn bộ tập dữ liệu sang định dạng cột <strong>Apache Parquet</strong>:</p>
-                                <ul class="benefit-list">
-                                    <li><strong>Nén dữ liệu vượt trội:</strong> Giảm kích thước tệp tin trên đĩa lên đến 85% nhờ cơ chế nén cột thông minh.</li>
-                                    <li><strong>Tăng tốc truy cập:</strong> Đọc trực tiếp các cột cần dùng cho mô hình mà không cần nạp toàn bộ dòng vào RAM.</li>
-                                    <li><strong>Tương thích hoàn hảo:</strong> Dễ dàng tích hợp với các thư viện xử lý Pandas và PyArrow trong Python.</li>
-                                </ul>
-                            </div>
-                            <div class="slide-visual">
-                                <div class="visual-card">
-                                    <div class="card-header">
-                                        <span>SO SÁNH HIỆU QUẢ QUY TRÌNH LƯU TRỮ</span>
-                                    </div>
-                                    <div class="comparison-visualizer">
-                                        <div class="comp-box">
-                                            <h4>Định dạng cũ (JSONL)</h4>
-                                            <div class="comp-bar-container">
-                                                <div class="comp-bar bad-bar" style="height: 140px">
-                                                    <span>12.5 GB</span>
-                                                </div>
-                                            </div>
-                                            <p>Cồng kềnh, phân tích tuần tự rất chậm</p>
-                                        </div>
-                                        <div class="arrow-container">➡️</div>
-                                        <div class="comp-box">
-                                            <h4>Định dạng mới (Parquet)</h4>
-                                            <div class="comp-bar-container">
-                                                <div class="comp-bar good-bar" style="height: 25px">
-                                                    <span>1.8 GB</span>
-                                                </div>
-                                            </div>
-                                            <p>Nén cột, truy xuất song song tức thì (~7x)</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- STEP 3: PREPROCESSING (CLEANING) -->
-                    <div class="wizard-slide" id="slide-2">
-                        <div class="slide-grid">
-                            <div class="slide-info">
-                                <span class="step-badge">BƯỚC 3</span>
-                                <h3>Tiền xử lý & Loại bỏ đặc trưng vô dụng</h3>
-                                <p>Một số lượng lớn cột đặc trưng trong số 2,381 chiều có giá trị hoàn toàn không thay đổi (hằng số) trên toàn bộ tập dữ liệu, hoặc có phương sai cực kỳ thấp (hầu hết toàn số 0).</p>
-                                <p>Các đặc trưng này không hề mang lại thông tin hữu ích giúp mô hình phân biệt giữa mã độc và tệp tin sạch, thậm chí gây ra tình trạng nhiễu dữ liệu và lãng phí tính toán.</p>
-                                <p><strong>Giải pháp:</strong></p>
-                                <ul class="cleaning-steps">
-                                    <li>Áp dụng kiểm tra phương sai trên tập con ngẫu nhiên gồm <strong>50,000 mẫu dữ liệu</strong>.</li>
-                                    <li>Tự động quét và loại bỏ <strong>41 đặc trưng hằng số</strong> (phương sai bằng 0).</li>
-                                    <li>Rút gọn tập đặc trưng giúp mô hình học nhanh hơn và tránh hiện tượng quá khớp (overfitting).</li>
-                                </ul>
-                            </div>
-                            <div class="slide-visual">
-                                <div class="visual-card">
-                                    <div class="card-header">
-                                        <span>QUÉT VÀ LOẠI BỎ ĐẶC TRƯNG HẰNG SỐ</span>
-                                    </div>
-                                    <div class="matrix-visualizer" id="variance-matrix">
-                                        <!-- Will be generated by JS -->
-                                    </div>
-                                    <div class="console-box">
-                                        <span class="c-line">[CLEANING] Quét 2,381 đặc trưng...</span>
-                                        <span class="c-line c-orange">[WARNING] Phát hiện 41 cột đặc trưng có phương sai = 0.</span>
-                                        <span class="c-line c-green">[SUCCESS] Loại bỏ 41 cột hằng số. Tập dữ liệu còn lại 2,340 đặc trưng.</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- STEP 4: FEATURE SELECTION (LIGHTGBM) -->
-                    <div class="wizard-slide" id="slide-3">
-                        <div class="slide-grid">
-                            <div class="slide-info">
-                                <span class="step-badge">BƯỚC 4</span>
-                                <h3>Lựa chọn Đặc trưng bằng tầm quan trọng LightGBM</h3>
-                                <p>Dù đã loại bỏ các cột hằng số, số lượng đặc trưng còn lại vẫn rất lớn (2,340 chiều), gây khó khăn cho việc triển khai mô hình nhẹ trong môi trường thực tế.</p>
-                                <p>Chúng tôi sử dụng thuật toán <strong>LightGBM</strong> để đánh giá độ quan trọng của từng đặc trưng (Feature Importance):</p>
-                                <ul class="selection-steps">
-                                    <li>Huấn luyện mô hình LightGBM nhanh trên tập con 50,000 mẫu.</li>
-                                    <li>Trích xuất điểm số quan trọng dựa trên tiêu chí <strong>Split Importance</strong> (số lần đặc trưng được dùng làm điểm chia các nhánh cây quyết định).</li>
-                                    <li>Lọc lấy <strong>Top 200 đặc trưng xuất sắc nhất</strong> có điểm số cao nhất để sử dụng cho mô hình huấn luyện chính thức.</li>
-                                </ul>
-                            </div>
-                            <div class="slide-visual">
-                                <div class="visual-card">
-                                    <div class="card-header">
-                                        <span>TOP 10 ĐẶC TRƯNG QUAN TRỌNG NHẤT (SPLIT IMPORTANCE)</span>
-                                    </div>
-                                    <div class="importance-chart" id="importance-chart-div">
-                                        <!-- Custom SVG chart generated by JS -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- STEP 5: EDA & KDE PLOT -->
-                    <div class="wizard-slide" id="slide-4">
-                        <div class="slide-grid">
-                            <div class="slide-info">
-                                <span class="step-badge">BƯỚC 5</span>
-                                <h3>Phân tích Phân bố (KDE) & Bản đồ Tương quan (EDA)</h3>
-                                <p>Chúng tôi thực hiện Phân tích Dữ liệu Khám phá (EDA) trên Top đặc trưng đã lựa chọn để thấu hiểu cách mô hình "nhìn nhận" sự khác biệt giữa tệp tin sạch (Benign) và tệp độc hại (Malware).</p>
-                                <p><strong>Biểu đồ Phân phối Mật độ Kernel (KDE Plot):</strong></p>
-                                <p>Trực quan hóa sự khác biệt rõ rệt của đặc trưng quan trọng nhất giữa hai nhãn. Mật độ phân bố tập trung ở các vùng giá trị hoàn toàn tách biệt, chứng minh đặc trưng này là chìa khóa vàng giúp phân loại Malware.</p>
-                                <p><strong>Bản đồ nhiệt Tương quan (Correlation Heatmap):</strong></p>
-                                <p>Đo lường mối quan hệ tuyến tính giữa Top 10 đặc trưng hàng đầu để kiểm tra sự trùng lặp thông tin.</p>
-                            </div>
-                            <div class="slide-visual">
-                                <div class="visual-card flex-visual-card">
-                                    <div class="sub-visual">
-                                        <div class="sub-card-header">MẬT ĐỘ PHÂN BỐ (KDE PLOT) ĐẶC TRƯNG F738</div>
-                                        <div id="kde-chart-div" class="chart-container-small"></div>
-                                    </div>
-                                    <div class="sub-visual">
-                                        <div class="sub-card-header">BẢN ĐỒ TƯƠNG QUAN CHÉO (CORRELATION HEATMAP)</div>
-                                        <div id="heatmap-chart-div" class="chart-container-small"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- STEP 6: MODELS COMPARISON -->
-                    <div class="wizard-slide" id="slide-5">
-                        <div class="slide-grid">
-                            <div class="slide-info">
-                                <span class="step-badge">BƯỚC 6</span>
-                                <h3>So sánh hiệu năng các mô hình Machine Learning</h3>
-                                <p>Chúng tôi tiến hành huấn luyện thử nghiệm và so sánh chéo giữa 3 thuật toán phân loại phổ biến trên tập dữ liệu EMBER hoàn chỉnh (600,000 mẫu, rút gọn còn 200 đặc trưng):</p>
-                                <div class="model-cards-container">
-                                    <div class="mini-model-card border-cyan">
-                                        <h5>Logistic Regression</h5>
-                                        <p>Mô hình tuyến tính đơn giản, đóng vai trò làm Baseline.</p>
-                                        <div class="mini-stat">Accuracy: <strong>83.28%</strong></div>
-                                    </div>
-                                    <div class="mini-model-card border-purple">
-                                        <h5>Random Forest</h5>
-                                        <p>Mô hình quần thể cây quyết định song song, chính xác cao.</p>
-                                        <div class="mini-stat">Accuracy: <strong>97.36%</strong></div>
-                                    </div>
-                                    <div class="mini-model-card border-emerald">
-                                        <h5>LightGBM</h5>
-                                        <p>Gradient Boosting tối ưu, tốc độ siêu nhanh & độ chính xác đỉnh cao.</p>
-                                        <div class="mini-stat">Accuracy: <strong>96.28%</strong></div>
-                                    </div>
-                                </div>
-                                <p class="model-note"><strong>Nhận xét:</strong> Random Forest và LightGBM cho hiệu năng xuất sắc vượt trội (>96%), trong đó LightGBM vượt trội hơn hẳn về mặt tài nguyên tính toán và dung lượng model nhỏ gọn, lý tưởng để đưa vào môi trường Sandbox chạy thực tế.</p>
-                            </div>
-                            <div class="slide-visual">
-                                <div class="visual-card flex-visual-card">
-                                    <div class="visual-tabs">
-                                        <button class="visual-tab-btn active" id="vtab-btn-metrics" onclick="switchVisualTab('metrics')">📊 Thống kê Hiệu năng</button>
-                                        <button class="visual-tab-btn" id="vtab-btn-tree" onclick="switchVisualTab('tree')">🌳 Cây Quyết định LGBM</button>
-                                        <button class="visual-tab-btn" id="vtab-btn-train" onclick="switchVisualTab('train')">⚙️ Quy trình Train & Update</button>
-                                    </div>
-                                    
-                                    <!-- TAB 1: METRICS -->
-                                    <div id="vtab-content-metrics" class="visual-tab-content active">
-                                        <div class="sub-visuals-row">
-                                            <div class="sub-visual">
-                                                <div class="sub-card-header">SO SÁNH ĐƯỜNG CONG ROC (VAL SET)</div>
-                                                <div id="roc-chart-div" class="chart-container-small"></div>
-                                            </div>
-                                            <div class="sub-visual">
-                                                <div class="sub-card-header">BIỂU ĐỒ SO SÁNH ĐIỂM SỐ METRIC</div>
-                                                <div id="metrics-chart-div" class="chart-container-small"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- TAB 2: INTERACTIVE LGBM TREE -->
-                                    <div id="vtab-content-tree" class="visual-tab-content">
-                                        <div class="sub-card-header">SƠ ĐỒ QUYẾT ĐỊNH CỦA MỘT CÂY LGBM ĐIỂN HÌNH</div>
-                                        <div class="lgb-tree-scroll-container">
-                                            <div class="html-tree">
-                                                <div class="tree-node root-node">
-                                                    <div class="node-box root-box">
-                                                        <span class="node-tag tag-cyan">Gốc (Root)</span>
-                                                        <p class="node-cond">Entropy .text &gt; 7.15?</p>
-                                                    </div>
-                                                    <div class="tree-children">
-                                                        <div class="tree-child child-left">
-                                                            <div class="branch-label text-red">Đúng (Nhánh A: Nghi ngờ)</div>
-                                                            <div class="tree-node inner-node">
-                                                                <div class="node-box inner-box">
-                                                                    <span class="node-tag tag-purple">Chữ ký số</span>
-                                                                    <p class="node-cond">Không có chữ ký?</p>
-                                                                </div>
-                                                                <div class="tree-children">
-                                                                    <div class="tree-child child-left">
-                                                                        <div class="branch-label text-red">Đúng (A.1)</div>
-                                                                        <div class="tree-node leaf-node malware-leaf">
-                                                                            <span class="leaf-tag">MALWARE</span>
-                                                                            <p class="leaf-conf">Độ tin cậy: 99.1%</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="tree-child child-right">
-                                                                        <div class="branch-label text-green">Sai (A.2)</div>
-                                                                        <div class="tree-node leaf-node benign-leaf">
-                                                                            <span class="leaf-tag">BENIGN</span>
-                                                                            <p class="leaf-conf">Độ tin cậy: 92.4%</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="tree-child child-right">
-                                                            <div class="branch-label text-green">Sai (Nhánh B: Sạch)</div>
-                                                            <div class="tree-node inner-node">
-                                                                <div class="node-box inner-box">
-                                                                    <span class="node-tag tag-purple">Hàm Imports</span>
-                                                                    <p class="node-cond">Imports Count &lt; 15?</p>
-                                                                </div>
-                                                                <div class="tree-children">
-                                                                    <div class="tree-child child-left">
-                                                                        <div class="branch-label text-red">Đúng (B.1)</div>
-                                                                        <div class="tree-node leaf-node malware-leaf">
-                                                                            <span class="leaf-tag">MALWARE</span>
-                                                                            <p class="leaf-conf">Độ tin cậy: 95.4%</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="tree-child child-right">
-                                                                        <div class="branch-label text-green">Sai (B.2)</div>
-                                                                        <div class="tree-node leaf-node benign-leaf">
-                                                                            <span class="leaf-tag">BENIGN</span>
-                                                                            <p class="leaf-conf">Độ tin cậy: 99.6%</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- TAB 3: TRAINING & RETRAINING WORKFLOW -->
-                                    <div id="vtab-content-train" class="visual-tab-content">
-                                        <div class="sub-card-header">QUY TRÌNH HUẤN LUYỆN & CẬP NHẬT MÔ HÌNH LIÊN TỤC (CI/CD)</div>
-                                        <div class="train-workflow-container">
-                                            <div class="train-timeline">
-                                                <div class="timeline-item">
-                                                    <div class="timeline-icon">📥</div>
-                                                    <div class="timeline-content">
-                                                        <h4>Bước 1: Thu thập & Gán nhãn Dữ liệu</h4>
-                                                        <p>Tập dữ liệu EMBER khổng lồ (1.1 triệu mẫu) được phân rã cấu trúc PE, gán nhãn chính xác dựa trên kết quả quét của VirusTotal (Malware: 1, Benign: 0, Unlabeled: bỏ qua).</p>
-                                                    </div>
-                                                </div>
-                                                <div class="timeline-item">
-                                                    <div class="timeline-icon">⚖️</div>
-                                                    <div class="timeline-content">
-                                                        <h4>Bước 2: Phân tách & Chia dữ liệu</h4>
-                                                        <p>Chia tập dữ liệu theo thời gian (Time-based split) thành các tập Train (600,000 mẫu), Val (200,000 mẫu) và Test (200,000 mẫu) để chống rò rỉ dữ liệu (Data Leakage).</p>
-                                                    </div>
-                                                </div>
-                                                <div class="timeline-item">
-                                                    <div class="timeline-icon">🌲</div>
-                                                    <div class="timeline-content">
-                                                        <h4>Bước 3: Huấn luyện Thích ứng tuần tự (Gradient Boosting)</h4>
-                                                        <p>LightGBM xây dựng hàng trăm cây quyết định tuần tự. Cây sau tập trung sửa sai (residuals) cho cây trước theo phương thức toán học: $F_m(x) = F_{m-1}(x) + \eta T_m(x)$.</p>
-                                                    </div>
-                                                </div>
-                                                <div class="timeline-item">
-                                                    <div class="timeline-icon">🔄</div>
-                                                    <div class="timeline-content">
-                                                        <h4>Bước 4: Đánh giá & Cập nhật Nóng (Hot Swap)</h4>
-                                                        <p>Mô hình được chuyển đổi sang file trọng số nhẹ `.pkl`. Khi phát hiện dòng mã độc mới, mô hình được huấn luyện gia tăng (Incremental Learning) và hot-swap file `.pkl` trên Server mà không cần ngừng hoạt động.</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- Wizard Actions -->
-                <div class="wizard-actions">
-                    <button class="btn btn-secondary" id="btn-prev" onclick="moveSlide(-1)">⬅️ Bước Trước</button>
-                    <button class="btn btn-primary" id="btn-next" onclick="moveSlide(1)">Bước Tiếp Theo ➡️</button>
-                </div>
-            </section>
-
-            <!-- TAB 2: LIVE SANDBOX DETECTOR -->
-            <section id="tab-sandbox" class="tab-pane">
-                <header class="content-header">
-                    <h2>MALWARE SANDBOX DETECTOR</h2>
-                    <p>Hệ thống tự động phân tích cấu trúc PE, trích xuất đặc trưng thời gian thực và xếp lớp dự đoán mã độc bằng thuật toán LightGBM.</p>
-                </header>
-
-                <div class="sandbox-grid">
-                    
-                    <!-- Control Panel (Upload / Selection) -->
-                    <div class="sandbox-control-panel">
-                        <div class="glass-card">
-                            <h3>1. Chọn nguồn dữ liệu đầu vào</h3>
-                            
-                            <!-- File Upload Area -->
-                            <div class="upload-zone" id="dropzone" onclick="triggerFileInput()">
-                                <div class="upload-icon">📥</div>
-                                <p class="main-text">Kéo thả file .exe/.dll hoặc .json vào đây</p>
-                                <p class="sub-text">Hỗ trợ quét file thực thi thô HOẶC file đặc trưng JSON từ tập test</p>
-                                <input type="file" id="fileInput" accept=".exe,.dll,.json" onchange="handleFileSelect(event)" style="display: none">
-                            </div>
-
-                            <div class="divider"><span>HOẶC CHỌN MẪU DỰNG SẴN</span></div>
-
-                            <!-- Built-in Samples Carousel -->
-                            <div class="samples-selector">
-                                <button class="sample-chip benign" onclick="loadSample('putty_benign.exe')">
-                                    <span class="icon">🟢</span> putty_benign.exe
-                                </button>
-                                <button class="sample-chip malware" onclick="loadSample('wannacry_ransomware.exe')">
-                                    <span class="icon">🔴</span> wannacry_ransomware.exe
-                                </button>
-                                <button class="sample-chip benign" onclick="loadSample('chrome_installer.exe')">
-                                    <span class="icon">🟢</span> chrome_installer.exe
-                                </button>
-                                <button class="sample-chip malware" onclick="loadSample('unknown_trojan.exe')">
-                                    <span class="icon">🔴</span> unknown_trojan.exe
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Scan Console Log Monitor -->
-                        <div class="glass-card log-card">
-                            <h3>Bảng giám sát quy trình quét</h3>
-                            <div class="console-box monitor-console" id="monitor-console">
-                                <span class="c-line c-gray">[SYS] Hệ thống sẵn sàng. Chọn hoặc upload file để bắt đầu phân tích...</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Diagnostics Results Card -->
-                    <div class="sandbox-results-panel">
-                        <div class="glass-card results-card" id="results-container">
-                            <div class="placeholder-result">
-                                <div class="microscope-icon">🔬</div>
-                                <h3>Đang đợi dữ liệu đầu vào...</h3>
-                                <p>Kết quả giải phẫu nhị phân và điểm số đe dọa mã độc sẽ được tính toán và hiển thị thời gian thực tại đây.</p>
-                            </div>
-                            
-                            <!-- Detailed Results Content (Hidden by default, shown when scanned) -->
-                            <div class="detailed-results" style="display: none">
-                                <div class="results-header-box">
-                                    <div class="threat-gauge-box">
-                                        <svg class="gauge-ring" viewBox="0 0 120 120">
-                                            <circle class="gauge-ring-bg" cx="60" cy="60" r="50"></circle>
-                                            <circle class="gauge-ring-fill" cx="60" cy="60" r="50" id="gauge-fill"></circle>
-                                        </svg>
-                                        <div class="gauge-value" id="threat-percent">0%</div>
-                                        <span class="gauge-label">THREAT SCORE</span>
-                                    </div>
-                                    
-                                    <div class="verdict-box">
-                                        <div class="verdict-badge" id="verdict-badge">SAFE</div>
-                                        <h4 class="filename-text" id="filename-display">filename.exe</h4>
-                                        <div class="metadata-grid" id="metadata-grid">
-                                            <!-- Injected by JS -->
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="results-body-box">
-                                    <!-- Classifiers Probability Breakdown -->
-                                    <div class="results-column">
-                                        <h4>Độ tự tin của các mô hình (6 Baseline)</h4>
-                                        <div class="metric-progress-wrapper">
-                                            <div class="progress-info">
-                                                <span>🏆 Random Forest (Best)</span>
-                                                <span id="score-rf">0.0%</span>
-                                            </div>
-                                            <div class="progress-container">
-                                                <div class="progress-bar-fill bg-emerald" id="fill-rf" style="width: 0%"></div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="metric-progress-wrapper">
-                                            <div class="progress-info">
-                                                <span>CatBoost</span>
-                                                <span id="score-cat">0.0%</span>
-                                            </div>
-                                            <div class="progress-container">
-                                                <div class="progress-bar-fill bg-amber" id="fill-cat" style="width: 0%"></div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="metric-progress-wrapper">
-                                            <div class="progress-info">
-                                                <span>XGBoost</span>
-                                                <span id="score-xgb">0.0%</span>
-                                            </div>
-                                            <div class="progress-container">
-                                                <div class="progress-bar-fill bg-red" id="fill-xgb" style="width: 0%"></div>
-                                            </div>
-                                        </div>
-
-                                        <div class="metric-progress-wrapper">
-                                            <div class="progress-info">
-                                                <span>LightGBM</span>
-                                                <span id="score-lgb">0.0%</span>
-                                            </div>
-                                            <div class="progress-container">
-                                                <div class="progress-bar-fill bg-cyan" id="fill-lgb" style="width: 0%"></div>
-                                            </div>
-                                        </div>
-
-                                        <div class="metric-progress-wrapper">
-                                            <div class="progress-info">
-                                                <span>AdaBoost</span>
-                                                <span id="score-ada">0.0%</span>
-                                            </div>
-                                            <div class="progress-container">
-                                                <div class="progress-bar-fill bg-purple" id="fill-ada" style="width: 0%"></div>
-                                            </div>
-                                        </div>
-
-                                        <div class="metric-progress-wrapper">
-                                            <div class="progress-info">
-                                                <span>Logistic Regression</span>
-                                                <span id="score-lr">0.0%</span>
-                                            </div>
-                                            <div class="progress-container">
-                                                <div class="progress-bar-fill bg-pink" id="fill-lr" style="width: 0%"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Security Indicators List -->
-                                    <div class="results-column">
-                                        <h4>Chỉ số chuẩn đoán an ninh</h4>
-                                        <div class="indicators-list" id="indicators-list">
-                                            <!-- Injected by JS -->
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Real-time Explaining Decision Tree -->
-                                <div class="sandbox-explain-section">
-                                    <h4 class="sub-card-header" style="margin-top: 15px; margin-bottom: 10px;">🔎 BẢN ĐỒ DỰ ĐOÁN CÂY QUYẾT ĐỊNH THỜI GIAN THỰC</h4>
-                                    <p class="explain-text" style="font-size: 0.72rem; color: #94a3b8; margin-bottom: 12px; line-height: 1.3;">
-                                        Sơ đồ dưới đây tự động sáng đèn và lần vết (active path) theo đúng thuộc tính thực tế được trích xuất từ file của bạn.
-                                    </p>
-                                    <div class="lgb-tree-scroll-container" style="height: 250px;">
-                                        <div class="html-tree">
-                                            <div class="tree-node root-node">
-                                                <div class="node-box root-box" id="snode-root">
-                                                    <span class="node-tag tag-cyan">Gốc (Root)</span>
-                                                    <p class="node-cond">Entropy .text &gt; 7.15?</p>
-                                                    <span class="node-val-badge" id="sval-root">--</span>
-                                                </div>
-                                                <div class="tree-children">
-                                                    <div class="tree-child child-left" id="sbranch-left">
-                                                        <div class="branch-label text-red">Đúng</div>
-                                                        <div class="tree-node inner-node">
-                                                            <div class="node-box inner-box" id="snode-inner-left">
-                                                                <span class="node-tag tag-purple">Chữ ký số</span>
-                                                                <p class="node-cond">Không có chữ ký?</p>
-                                                                <span class="node-val-badge" id="sval-inner-left">--</span>
-                                                            </div>
-                                                            <div class="tree-children">
-                                                                <div class="tree-child child-left" id="sbranch-left-left">
-                                                                    <div class="branch-label text-red">Đúng (A.1)</div>
-                                                                    <div class="tree-node leaf-node malware-leaf" id="snode-leaf-left-left">
-                                                                        <span class="leaf-tag">MALWARE</span>
-                                                                        <p class="leaf-conf">Độ tin cậy: 99.1%</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="tree-child child-right" id="sbranch-left-right">
-                                                                    <div class="branch-label text-green">Sai (A.2)</div>
-                                                                    <div class="tree-node leaf-node benign-leaf" id="snode-leaf-left-right">
-                                                                        <span class="leaf-tag">BENIGN</span>
-                                                                        <p class="leaf-conf">Độ tin cậy: 92.4%</p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="tree-child child-right" id="sbranch-right">
-                                                        <div class="branch-label text-green">Sai</div>
-                                                        <div class="tree-node inner-node">
-                                                            <div class="node-box inner-box" id="snode-inner-right">
-                                                                <span class="node-tag tag-purple">Hàm Imports</span>
-                                                                <p class="node-cond">Imports Count &lt; 15?</p>
-                                                                <span class="node-val-badge" id="sval-inner-right">--</span>
-                                                            </div>
-                                                            <div class="tree-children">
-                                                                <div class="tree-child child-left" id="sbranch-right-left">
-                                                                    <div class="branch-label text-red">Đúng (B.1)</div>
-                                                                    <div class="tree-node leaf-node malware-leaf" id="snode-leaf-right-left">
-                                                                        <span class="leaf-tag">MALWARE</span>
-                                                                        <p class="leaf-conf">Độ tin cậy: 95.4%</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="tree-child child-right" id="sbranch-right-right">
-                                                                    <div class="branch-label text-green">Sai (B.2)</div>
-                                                                    <div class="tree-node leaf-node benign-leaf" id="snode-leaf-right-right">
-                                                                        <span class="leaf-tag">BENIGN</span>
-                                                                        <p class="leaf-conf">Độ tin cậy: 99.6%</p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="results-footer-actions" style="margin-top: 20px; display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; width: 100%;">
-                                    <button class="btn btn-primary" onclick="switchToXaiTab()" style="animation: pulse-glow 2s infinite;">🌳 Xem Luồng Quyết định Chi tiết (XAI) ➡️</button>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                </div>
-            </section>
-
-            <!-- TAB 3: DECISION TREE VISUALIZER (XAI) -->
-            <section id="tab-visualization" class="tab-pane">
-                <header class="content-header">
-                    <h2>🔬 TRỰC QUAN HÓA LUỒNG QUYẾT ĐỊNH (XAI)</h2>
-                    <p>Theo dõi hoạt ảnh chạy động từ trên xuống giải thích chi tiết quá trình suy luận từng bước (Step-by-step decision path) của mô hình LightGBM.</p>
-                </header>
-
-                <div class="xai-container">
-                    <!-- Control Bar -->
-                    <div class="glass-card xai-controls">
-                        <div class="xai-control-group">
-                            <label for="xai-sample-select">Chọn tệp tin để phân tích:</label>
-                            <select id="xai-sample-select" onchange="loadXaiSample()">
-                                <option value="wannacry_ransomware.exe">wannacry_ransomware.exe (Mã độc WannaCry)</option>
-                                <option value="putty_benign.exe">putty_benign.exe (Tệp PuTTY An toàn)</option>
-                                <option value="chrome_installer.exe">chrome_installer.exe (Bộ cài Chrome An toàn)</option>
-                                <option value="unknown_trojan.exe">unknown_trojan.exe (Tệp Trojan Ẩn danh)</option>
-                                <option value="custom_file" id="xai-custom-option" style="display: none">-- Tệp tin bạn vừa tải lên --</option>
-                            </select>
-                        </div>
-                        <div class="xai-button-group">
-                            <button class="btn btn-primary" onclick="startXaiAnimation()">▶️ Chạy hoạt ảnh</button>
-                            <button class="btn btn-secondary" onclick="resetXaiAnimation()">🔁 Chạy lại</button>
-                        </div>
-                    </div>
-
-                    <div class="xai-workspace-grid">
-                        <!-- Left Column: Top-Down Decision Tree Flow -->
-                        <div class="glass-card xai-tree-card">
-                            <h3>🌳 LUỒNG QUYẾT ĐỊNH CỦA MÔ HÌNH LIGHTGBM</h3>
-                            <div class="vertical-tree-container">
-                                <div class="v-tree-root">
-                                    <!-- Level 1 -->
-                                    <div class="v-tree-row">
-                                        <div class="v-node-box" id="xnode-l1">
-                                            <div class="v-node-header header-purple">Tầng 1: Đánh giá Header</div>
-                                            <div class="v-node-cond">Đặc trưng F638 (PE Timestamp)</div>
-                                            <div class="v-node-badge" id="xval-l1">--</div>
-                                        </div>
-                                    </div>
-                                    <div class="v-path-line-vertical" id="xpath-l1"></div>
-
-                                    <!-- Level 2 -->
-                                    <div class="v-tree-row">
-                                        <div class="v-node-box" id="xnode-l2">
-                                            <div class="v-node-header header-purple">Tầng 2: Mật độ Entropy</div>
-                                            <div class="v-node-cond">Đặc trưng F503 (Khối mã hóa)</div>
-                                            <div class="v-node-badge" id="xval-l2">--</div>
-                                        </div>
-                                    </div>
-                                    <div class="v-path-line-vertical" id="xpath-l2"></div>
-
-                                    <!-- Level 3 -->
-                                    <div class="v-tree-row">
-                                        <div class="v-node-box" id="xnode-l3">
-                                            <div class="v-node-header header-purple">Tầng 3: Mật độ Entropy Phụ</div>
-                                            <div class="v-node-cond">Đặc trưng F504 (Phân bố dị thường)</div>
-                                            <div class="v-node-badge" id="xval-l3">--</div>
-                                        </div>
-                                    </div>
-                                    <div class="v-path-line-vertical" id="xpath-l3"></div>
-
-                                    <!-- Level 4 -->
-                                    <div class="v-tree-row">
-                                        <div class="v-node-box" id="xnode-l4">
-                                            <div class="v-node-header header-purple">Tầng 4: Phân tích Chuỗi</div>
-                                            <div class="v-node-cond">Đặc trưng F1344 (String Paths)</div>
-                                            <div class="v-node-badge" id="xval-l4">--</div>
-                                        </div>
-                                    </div>
-                                    <div class="v-path-line-vertical" id="xpath-l4"></div>
-
-                                    <!-- Level 5 -->
-                                    <div class="v-tree-row">
-                                        <div class="v-node-box" id="xnode-l5">
-                                            <div class="v-node-header header-purple">Tầng 5: Cấu trúc Bộ nhớ</div>
-                                            <div class="v-node-cond">Đặc trưng F2142 (Section/Imports)</div>
-                                            <div class="v-node-badge" id="xval-l5">--</div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Connecting Lines to Leaves -->
-                                    <div class="v-connectors-row split-connectors" style="margin-top: 15px;">
-                                        <div class="v-sub-connectors" style="width:100%;">
-                                            <div class="v-connector-left" id="xpath-final-left">
-                                                <div class="v-path-line"></div>
-                                                <span class="v-path-label bg-red-dim">MALWARE</span>
-                                            </div>
-                                            <div class="v-connector-right" id="xpath-final-right">
-                                                <div class="v-path-line"></div>
-                                                <span class="v-path-label bg-green-dim">BENIGN</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Final Leaves -->
-                                    <div class="v-tree-row split-row leaves-row">
-                                        <div class="v-leaf-box v-malware-leaf" id="xnode-leaf-malware">
-                                            <div class="v-leaf-badge">MALWARE</div>
-                                            <div class="v-leaf-conf" id="xconf-malware">--</div>
-                                        </div>
-                                        <div class="v-leaf-box v-benign-leaf" id="xnode-leaf-benign">
-                                            <div class="v-leaf-badge">BENIGN</div>
-                                            <div class="v-leaf-conf" id="xconf-benign">--</div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Right Column: Interactive Decision Explanation Board -->
-                        <div class="glass-card xai-explanation-card">
-                            <h3>📝 NHẬT KÝ RA QUYẾT ĐỊNH (XAI DECISION LOGS)</h3>
-                            <div class="xai-console-wrapper">
-                                <div class="xai-console-logs" id="xai-logs-container">
-                                    <div class="x-log-line system-line">[SYS] Sẵn sàng phân tích. Bấm nút "Chạy hoạt ảnh" ở trên để bắt đầu mô phỏng luồng quyết định top-down.</div>
-                                </div>
-                            </div>
-                            
-                            <div class="xai-metadata-summary">
-                                <h4>📊 Tóm tắt đặc trưng tệp đang phân tích</h4>
-                                <div class="xai-meta-grid" id="xai-meta-summary-grid">
-                                    <div class="xai-meta-item">Tên tệp: <span id="xmeta-name">--</span></div>
-                                    <div class="xai-meta-item">Entropy phân vùng .text: <span id="xmeta-entropy">--</span></div>
-                                    <div class="xai-meta-item">Trạng thái chữ ký số: <span id="xmeta-signature">--</span></div>
-                                    <div class="xai-meta-item">Số lượng hàm Imports: <span id="xmeta-imports">--</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-        </main>
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="logo-wrap">
+      <div class="logo-icon">
+        <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z" stroke="#00d2c8" stroke-width="1.2" fill="none"/>
+          <path d="M8 4L11 5.75V9.25L8 11L5 9.25V5.75L8 4Z" fill="rgba(0,210,200,0.2)" stroke="#00d2c8" stroke-width="0.8"/>
+          <circle cx="8" cy="8" r="1.5" fill="#00d2c8"/>
+        </svg>
+      </div>
+      <div>
+        <span class="logo-text">MalwareML</span>
+        <span class="logo-sub">Threat Intel v2.4</span>
+      </div>
     </div>
 
-    <!-- Script imports -->
-    <script src="index.js"></script>
+    <div class="nav-section">
+      <p class="nav-label">Monitoring</p>
+      <a class="nav-item active" href="#" data-view="overview">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" stroke-width="1.1"/><rect x="8.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" stroke-width="1.1"/><rect x="1" y="8.5" width="5.5" height="5.5" rx="1" stroke="currentColor" stroke-width="1.1"/><rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1" stroke="currentColor" stroke-width="1.1"/></svg>
+        Overview
+      </a>
+      <a class="nav-item" href="#" data-view="scanner">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.1"/><path d="M5 7.5L6.8 9.5L10 5.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        Live Scanner
+        <span class="nav-badge">3</span>
+      </a>
+      <a class="nav-item" href="#" data-view="feed">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><path d="M2 11L5.5 7.5L8 10L11.5 6L13 7.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><rect x="1" y="2" width="13" height="11" rx="1.5" stroke="currentColor" stroke-width="1.1"/></svg>
+        Threat Feed
+        <span class="nav-badge">12</span>
+      </a>
+      <a class="nav-item" href="#" data-view="incidents">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="5.5" r="3" stroke="currentColor" stroke-width="1.1"/><path d="M2 13.5c0-2.485 2.462-4.5 5.5-4.5s5.5 2.015 5.5 4.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        Incidents
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <p class="nav-label">ML Platform</p>
+      <a class="nav-item" href="#" data-view="models">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="3" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.1"/><path d="M5 9.5V6l2 2 2-3.5V9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.5 5.5h12" stroke="currentColor" stroke-width="1.1"/></svg>
+        Models
+        <span class="nav-badge ok">6</span>
+      </a>
+      <a class="nav-item" href="#" data-view="datasets">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><circle cx="4" cy="7.5" r="2.5" stroke="currentColor" stroke-width="1.1"/><circle cx="11.5" cy="4" r="2" stroke="currentColor" stroke-width="1.1"/><circle cx="11.5" cy="11" r="2" stroke="currentColor" stroke-width="1.1"/><path d="M6.5 7.5H9.5" stroke="currentColor" stroke-width="1.1"/><path d="M6.2 6.2L9.5 4.7" stroke="currentColor" stroke-width="1.1"/><path d="M6.2 8.8L9.5 10.3" stroke="currentColor" stroke-width="1.1"/></svg>
+        Datasets
+      </a>
+      <a class="nav-item" href="#" data-view="training">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><path d="M2 3.5h11M2 7.5h8M2 11.5h5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        Training Runs
+      </a>
+      <a class="nav-item" href="#" data-view="explainability">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor"/><path d="M7.5 2v1.5M7.5 11.5V13M2 7.5h1.5M11.5 7.5H13M3.7 3.7l1 1M10.3 10.3l1 1M10.3 3.7l-1 1M4.7 9.3l-1 1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        Explainability
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <p class="nav-label">Config</p>
+      <a class="nav-item" href="#" data-view="apikeys">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.5L9 4h3l-2.4 1.8.9 3L7.5 7 4.5 8.8l.9-3L3 4h3l1.5-2.5z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>
+        API Keys
+      </a>
+      <a class="nav-item" href="#" data-view="settings">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="2.5" stroke="currentColor" stroke-width="1.1"/><path d="M7.5 1v2M7.5 12v2M1 7.5h2M12 7.5h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        Settings
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar">AK</div>
+        <div class="user-info">
+          <div class="user-name">alex.kim</div>
+          <div class="user-role">ML Engineer</div>
+        </div>
+        <div class="status-dot"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Threat Overview</div>
+        <div class="page-path" style="font-size:10px;color:var(--text-dim);margin-top:2px;">
+          <span class="live-dot"></span>Live · Updated 3s ago
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="search-box">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="5" cy="5" r="3.5" stroke="#3d5268" stroke-width="1.2"/><path d="M8 8l2 2" stroke="#3d5268" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <input type="text" placeholder="Search hash, filename...">
+        </div>
+        <button class="icon-btn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M4 7h6M6 10h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <div class="notif-dot"></div>
+        </button>
+        <button class="btn btn-primary">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M1 10h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Upload Sample
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- ── VIEW: OVERVIEW ── -->
+      <div id="view-overview" class="dashboard-view">
+      <!-- Metric Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card red">
+          <div class="metric-label">Threats Detected</div>
+          <div class="metric-val red" id="metric-threats">0</div>
+          <div class="metric-delta"><span class="up">↑</span> Session</div>
+        </div>
+        <div class="metric-card cyan">
+          <div class="metric-label">Files Scanned</div>
+          <div class="metric-val cyan" id="metric-scanned">0</div>
+          <div class="metric-delta"><span class="down">↑</span> Session</div>
+        </div>
+        <div class="metric-card green">
+          <div class="metric-label">Model Accuracy</div>
+          <div class="metric-val green" id="metric-accuracy">99.3%</div>
+          <div class="metric-delta">F1: <span style="color:var(--cyan)" id="metric-f1">0.991</span> · AUC: <span style="color:var(--cyan)" id="metric-auc">0.998</span></div>
+        </div>
+        <div class="metric-card amber">
+          <div class="metric-label">False Positive Rate</div>
+          <div class="metric-val amber">0.07%</div>
+          <div class="metric-delta"><span class="down">↓</span> Target < 0.1%</div>
+        </div>
+      </div>
+
+      <!-- Row: Chart + Threat Gauge -->
+      <div class="row-2col">
+        <!-- Detection Timeline -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Detection Timeline</div>
+            <span class="tag tag-cyan">Last 24h</span>
+            <div class="flex-center gap-6 ml-auto">
+              <button class="btn btn-ghost" style="padding:5px 10px;font-size:10.5px;">1h</button>
+              <button class="btn btn-ghost" style="padding:5px 10px;font-size:10.5px;background:var(--cyan-dim);color:var(--cyan);border-color:var(--border-strong)">24h</button>
+              <button class="btn btn-ghost" style="padding:5px 10px;font-size:10.5px;">7d</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="chart-area">
+              <svg viewBox="0 0 580 160" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="cyanGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#00d2c8" stop-opacity="0.25"/>
+                    <stop offset="100%" stop-color="#00d2c8" stop-opacity="0"/>
+                  </linearGradient>
+                  <linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ff3d5a" stop-opacity="0.2"/>
+                    <stop offset="100%" stop-color="#ff3d5a" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <!-- Grid lines -->
+                <line x1="0" y1="30" x2="580" y2="30" stroke="rgba(0,210,200,0.06)" stroke-width="1"/>
+                <line x1="0" y1="70" x2="580" y2="70" stroke="rgba(0,210,200,0.06)" stroke-width="1"/>
+                <line x1="0" y1="110" x2="580" y2="110" stroke="rgba(0,210,200,0.06)" stroke-width="1"/>
+                <line x1="0" y1="150" x2="580" y2="150" stroke="rgba(0,210,200,0.06)" stroke-width="1"/>
+
+                <!-- Labels -->
+                <text x="0" y="28" fill="#3d5268" font-size="8" font-family="monospace">200</text>
+                <text x="0" y="68" fill="#3d5268" font-size="8" font-family="monospace">150</text>
+                <text x="0" y="108" fill="#3d5268" font-size="8" font-family="monospace">100</text>
+                <text x="0" y="148" fill="#3d5268" font-size="8" font-family="monospace">50</text>
+
+                <!-- Scanned area fill -->
+                <path d="M22,120 L70,100 L118,95 L166,85 L214,60 L262,70 L310,50 L358,55 L406,45 L454,30 L502,35 L550,25 L550,155 L22,155 Z"
+                  fill="url(#cyanGrad)"/>
+                <!-- Scanned line -->
+                <path d="M22,120 L70,100 L118,95 L166,85 L214,60 L262,70 L310,50 L358,55 L406,45 L454,30 L502,35 L550,25"
+                  fill="none" stroke="#00d2c8" stroke-width="1.8" stroke-linejoin="round"/>
+
+                <!-- Threats area fill -->
+                <path d="M22,140 L70,130 L118,135 L166,120 L214,110 L262,115 L310,105 L358,90 L406,100 L454,80 L502,85 L550,75 L550,155 L22,155 Z"
+                  fill="url(#redGrad)"/>
+                <!-- Threats line -->
+                <path d="M22,140 L70,130 L118,135 L166,120 L214,110 L262,115 L310,105 L358,90 L406,100 L454,80 L502,85 L550,75"
+                  fill="none" stroke="#ff3d5a" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="4,2"/>
+
+                <!-- X axis labels -->
+                <text x="22" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">00:00</text>
+                <text x="118" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">04:00</text>
+                <text x="214" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">08:00</text>
+                <text x="310" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">12:00</text>
+                <text x="406" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">16:00</text>
+                <text x="502" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">20:00</text>
+
+                <!-- Spike callout -->
+                <circle cx="454" cy="30" r="3.5" fill="none" stroke="#00d2c8" stroke-width="1"/>
+                <line x1="454" y1="26" x2="454" y2="14" stroke="#00d2c8" stroke-width="0.8" stroke-dasharray="2,2"/>
+                <text x="458" y="13" fill="#00d2c8" font-size="7.5" font-family="monospace">PEAK</text>
+              </svg>
+            </div>
+            <!-- Legend -->
+            <div class="flex-center gap-10 mt-10" style="font-size:10.5px;">
+              <div class="flex-center gap-6"><div style="width:20px;height:2px;background:var(--cyan);border-radius:1px"></div><span class="text-muted">Files Scanned</span></div>
+              <div class="flex-center gap-6"><div style="width:20px;height:2px;background:var(--red);border-radius:1px;border-top:1px dashed var(--red)"></div><span class="text-muted">Threats Found</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Threat Gauge -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Threat Level</div>
+            <span class="tag tag-green pulse" id="threat-pulse">READY</span>
+          </div>
+          <div class="panel-body">
+            <div class="threat-gauge">
+              <div class="gauge-ring" id="gauge-ring">
+                <div class="gauge-inner">
+                  <span class="gauge-pct" id="gauge-pct" style="color: var(--green);">0%</span>
+                  <span class="gauge-lbl" id="gauge-lbl">risk index</span>
+                </div>
+              </div>
+              <div class="threat-level" id="threat-level" style="color: var(--green);">SAFE / BENIGN</div>
+              <div class="threat-desc" id="threat-desc">Waiting for file upload...</div>
+            </div>
+            <div class="sep"></div>
+            <div class="threat-bars" id="baseline-models-bars">
+              <!-- Random Forest -->
+              <div class="threat-row">
+                <span class="threat-type">Random Forest</span>
+                <div class="tbar-track"><div class="tbar-fill" id="bar-rf" style="width:0%;background:var(--cyan)"></div></div>
+                <span class="threat-pct-label text-cyan" id="pct-rf">0.0%</span>
+              </div>
+              <!-- CatBoost -->
+              <div class="threat-row">
+                <span class="threat-type">CatBoost</span>
+                <div class="tbar-track"><div class="tbar-fill" id="bar-cat" style="width:0%;background:var(--cyan)"></div></div>
+                <span class="threat-pct-label text-cyan" id="pct-cat">0.0%</span>
+              </div>
+              <!-- XGBoost -->
+              <div class="threat-row">
+                <span class="threat-type">XGBoost</span>
+                <div class="tbar-track"><div class="tbar-fill" id="bar-xgb" style="width:0%;background:var(--cyan)"></div></div>
+                <span class="threat-pct-label text-cyan" id="pct-xgb">0.0%</span>
+              </div>
+              <!-- LightGBM -->
+              <div class="threat-row">
+                <span class="threat-type">LightGBM</span>
+                <div class="tbar-track"><div class="tbar-fill" id="bar-lgb" style="width:0%;background:var(--cyan)"></div></div>
+                <span class="threat-pct-label text-cyan" id="pct-lgb">0.0%</span>
+              </div>
+              <!-- AdaBoost -->
+              <div class="threat-row">
+                <span class="threat-type">AdaBoost</span>
+                <div class="tbar-track"><div class="tbar-fill" id="bar-ada" style="width:0%;background:var(--cyan)"></div></div>
+                <span class="threat-pct-label text-cyan" id="pct-ada">0.0%</span>
+              </div>
+              <!-- Logistic Reg -->
+              <div class="threat-row">
+                <span class="threat-type">Logistic Reg</span>
+                <div class="tbar-track"><div class="tbar-fill" id="bar-lr" style="width:0%;background:var(--cyan)"></div></div>
+                <span class="threat-pct-label text-cyan" id="pct-lr">0.0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row: Recent Scans + Upload + Terminal -->
+      <div class="row-2col" style="grid-template-columns: 1fr 300px;">
+        <!-- Recent Scans -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Recent Scans</div>
+            <span class="tag tag-cyan"><span class="live-dot" style="width:5px;height:5px;margin-right:4px"></span>Live</span>
+            <a href="#" style="margin-left:auto;font-size:10.5px;color:var(--cyan);text-decoration:none">View all →</a>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Type</th>
+                  <th>Verdict</th>
+                  <th>Confidence</th>
+                  <th>Model</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="recent-scans-tbody">
+                <!-- Rows will be added dynamically by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right column: Upload + Terminal -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Upload -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Quick Scan</div>
+              <span class="tag tag-green">Ready</span>
+            </div>
+            <div class="panel-body">
+              <div class="upload-zone" id="upload-zone">
+                <input type="file" id="file-upload" style="display:none;" />
+                <div class="upload-icon">
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="2" y="6" width="24" height="18" rx="2" stroke="#00d2c8" stroke-width="1.3"/><path d="M14 2v14M9 7l5-5 5 5" stroke="#00d2c8" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="upload-text">Drop file to analyze</div>
+                <div class="upload-sub">EXE · JSON · DLL · PDF · up to 512MB</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span class="tag tag-cyan">PE32</span>
+                <span class="tag tag-cyan">Office</span>
+                <span class="tag tag-cyan">Script</span>
+                <span class="tag tag-cyan">Archive</span>
+                <span class="tag tag-cyan">APK</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terminal -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">System Log</div>
+              <span class="flex-center gap-6" style="font-size:9.5px;color:var(--green)"><span class="live-dot" style="width:5px;height:5px"></span>Live</span>
+            </div>
+            <div class="panel-body" style="padding:10px 12px">
+              <div class="terminal" id="system-terminal">
+                <div class="t-line"><span class="t-time" id="init-time">00:00:00</span><span class="t-tag t-info">[SYS]</span><span class="t-msg">MalwareML Pipeline initialized. Waiting for input...</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row: Models + Training -->
+      <div class="row-3col">
+        <!-- Active Models -->
+        <div class="panel" style="grid-column: span 2;">
+          <div class="panel-header">
+            <div class="panel-title">Active ML Models</div>
+            <a href="#" style="margin-left:auto;font-size:10.5px;color:var(--cyan);text-decoration:none">Manage →</a>
+          </div>
+          <div class="panel-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="model-card">
+                <div class="flex-center gap-8 mb-10">
+                  <div class="model-name">RandomForest v3</div>
+                  <span class="tag tag-green" style="margin-left:auto">Active</span>
+                </div>
+                <div class="model-type">Ensemble · Feature-based</div>
+                <div class="model-stats">
+                  <div class="mstat"><div class="mstat-val">99.3%</div><div class="mstat-lbl">Accuracy</div></div>
+                  <div class="mstat"><div class="mstat-val" style="color:var(--green)">0.991</div><div class="mstat-lbl">F1 Score</div></div>
+                </div>
+                <div class="model-footer">
+                  <span class="tag tag-cyan">Primary</span>
+                  <span class="text-dim" style="font-size:9.5px;margin-left:auto">↓ 2.4ms</span>
+                </div>
+              </div>
+              <div class="model-card">
+                <div class="flex-center gap-8 mb-10">
+                  <div class="model-name">DeepNN v2</div>
+                  <span class="tag tag-green" style="margin-left:auto">Active</span>
+                </div>
+                <div class="model-type">Deep Learning · CNN</div>
+                <div class="model-stats">
+                  <div class="mstat"><div class="mstat-val">98.7%</div><div class="mstat-lbl">Accuracy</div></div>
+                  <div class="mstat"><div class="mstat-val" style="color:var(--green)">0.985</div><div class="mstat-lbl">F1 Score</div></div>
+                </div>
+                <div class="model-footer">
+                  <span class="tag tag-amber">Secondary</span>
+                  <span class="text-dim" style="font-size:9.5px;margin-left:auto">↓ 18ms</span>
+                </div>
+              </div>
+              <div class="model-card">
+                <div class="flex-center gap-8 mb-10">
+                  <div class="model-name">GradientBoost v1</div>
+                  <span class="tag tag-amber" style="margin-left:auto">Shadow</span>
+                </div>
+                <div class="model-type">Gradient Boosting · XGBoost</div>
+                <div class="model-stats">
+                  <div class="mstat"><div class="mstat-val" style="color:var(--amber)">97.1%</div><div class="mstat-lbl">Accuracy</div></div>
+                  <div class="mstat"><div class="mstat-val" style="color:var(--amber)">0.969</div><div class="mstat-lbl">F1 Score</div></div>
+                </div>
+                <div class="model-footer">
+                  <span class="tag tag-amber">Testing</span>
+                  <span class="text-dim" style="font-size:9.5px;margin-left:auto">↓ 1.1ms</span>
+                </div>
+              </div>
+              <div class="model-card" style="border-style:dashed;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;cursor:pointer;opacity:0.6">
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--bg-base);border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;margin-bottom:8px">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="#00d2c8" stroke-width="1.2" stroke-linecap="round"/></svg>
+                </div>
+                <div style="font-size:11.5px;color:var(--text-secondary)">Deploy new model</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Training Progress -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Training Progress</div>
+            <span class="tag tag-amber pulse">Running</span>
+          </div>
+          <div class="panel-body">
+            <div style="margin-bottom:14px">
+              <div class="flex-center gap-6 mb-10" style="font-size:10.5px">
+                <span class="text-muted">Transformer-v4</span>
+                <span style="margin-left:auto;color:var(--cyan);font-size:10px">Epoch 42/100</span>
+              </div>
+              <div class="progress-item">
+                <div class="progress-header"><span class="progress-name">Training Loss</span><span class="progress-val">0.032</span></div>
+                <div class="progress-track"><div class="progress-fill" style="width:78%"></div></div>
+              </div>
+              <div class="progress-item">
+                <div class="progress-header"><span class="progress-name">Validation Acc</span><span class="progress-val" style="color:var(--amber)">96.8%</span></div>
+                <div class="progress-track"><div class="progress-fill amber" style="width:62%"></div></div>
+              </div>
+              <div class="progress-item">
+                <div class="progress-header"><span class="progress-name">ETA</span><span class="progress-val" style="color:var(--purple)">2h 14m</span></div>
+                <div class="progress-track"><div class="progress-fill purple" style="width:42%"></div></div>
+              </div>
+            </div>
+            <div class="sep"></div>
+            <div style="font-size:10.5px;color:var(--text-secondary);line-height:2">
+              <div class="flex-center gap-6"><span class="text-dim">GPU</span><span style="margin-left:auto">RTX 4090 · 94% util</span></div>
+              <div class="flex-center gap-6"><span class="text-dim">Samples</span><span style="margin-left:auto">1.2M train / 240K val</span></div>
+              <div class="flex-center gap-6"><span class="text-dim">LR</span><span style="margin-left:auto;color:var(--cyan)">2e-5 (cosine decay)</span></div>
+              <div class="flex-center gap-6"><span class="text-dim">Batch</span><span style="margin-left:auto">512</span></div>
+            </div>
+            <div class="sep"></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:10.5px">Pause</button>
+              <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:10.5px">Details</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- view-overview end -->
+      </div>
+
+      <!-- ── VIEW: LIVE SCANNER ── -->
+      <div id="view-scanner" class="dashboard-view" style="display:none;">
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header">
+            <div class="panel-title">Advanced Threat Scanner</div>
+            <span class="tag tag-green">AI Engine Active</span>
+          </div>
+          <div class="panel-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+              <div>
+                <div class="upload-zone" id="scanner-upload-zone" style="padding:50px 20px;">
+                  <input type="file" id="scanner-file-upload" style="display:none;" />
+                  <div class="upload-icon">⚡</div>
+                  <div class="upload-text">Select or Drag any file to Scan</div>
+                  <div class="upload-sub">Fully extracts PE structure & runs 6 ML classifiers</div>
+                </div>
+                
+                <h4 style="margin-bottom:10px;font-family:var(--display);color:var(--text-secondary);">Demo Test Samples</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <button class="btn btn-ghost select-sample-btn" data-sample="putty_benign.exe" style="justify-content:center;">🟢 putty_benign.exe</button>
+                  <button class="btn btn-ghost select-sample-btn" data-sample="chrome_installer.exe" style="justify-content:center;">🟢 chrome_installer.exe</button>
+                  <button class="btn btn-ghost select-sample-btn" data-sample="wannacry_ransomware.exe" style="color:var(--red);border-color:var(--red-dim);justify-content:center;">🔴 wannacry.exe</button>
+                  <button class="btn btn-ghost select-sample-btn" data-sample="unknown_trojan.exe" style="color:var(--amber);border-color:var(--amber-dim);justify-content:center;">🟡 unknown_trojan.exe</button>
+                </div>
+              </div>
+
+              <!-- Scanner Pipeline Visualization (VisuAlgo Style) -->
+              <div style="background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:15px;display:flex;flex-direction:column;gap:12px;">
+                <h4 style="font-family:var(--display);font-size:12px;color:var(--cyan);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Pipeline Diễn Họa (Step-by-step)</h4>
+                
+                <div class="pipeline-step" id="pstep-1" style="opacity:0.4;transition:all 0.3s;display:flex;align-items:center;gap:10px;background:var(--bg-card);padding:8px 12px;border-radius:6px;border:1px solid var(--border);">
+                  <div class="step-num" style="width:20px;height:20px;border-radius:50%;background:var(--text-dim);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;">1</div>
+                  <div style="font-size:11.5px;"><strong style="color:var(--text-primary);">Magic PE Header Check</strong><br/><span style="font-size:10px;color:var(--text-secondary);">Verify MS-DOS MZ signature & PE offsets.</span></div>
+                </div>
+                <div class="pipeline-step" id="pstep-2" style="opacity:0.4;transition:all 0.3s;display:flex;align-items:center;gap:10px;background:var(--bg-card);padding:8px 12px;border-radius:6px;border:1px solid var(--border);">
+                  <div class="step-num" style="width:20px;height:20px;border-radius:50%;background:var(--text-dim);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;">2</div>
+                  <div style="font-size:11.5px;"><strong style="color:var(--text-primary);">Feature Extraction (2,381 Features)</strong><br/><span style="font-size:10px;color:var(--text-secondary);">Run PEFeatureExtractor for Sections, Imports, Header...</span></div>
+                </div>
+                <div class="pipeline-step" id="pstep-3" style="opacity:0.4;transition:all 0.3s;display:flex;align-items:center;gap:10px;background:var(--bg-card);padding:8px 12px;border-radius:6px;border:1px solid var(--border);">
+                  <div class="step-num" style="width:20px;height:20px;border-radius:50%;background:var(--text-dim);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;">3</div>
+                  <div style="font-size:11.5px;"><strong style="color:var(--text-primary);">Scaler Transformation</strong><br/><span style="font-size:10px;color:var(--text-secondary);">Scale Top 200 Features using MinMaxScaler.</span></div>
+                </div>
+                <div class="pipeline-step" id="pstep-4" style="opacity:0.4;transition:all 0.3s;display:flex;align-items:center;gap:10px;background:var(--bg-card);padding:8px 12px;border-radius:6px;border:1px solid var(--border);">
+                  <div class="step-num" style="width:20px;height:20px;border-radius:50%;background:var(--text-dim);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;">4</div>
+                  <div style="font-size:11.5px;"><strong style="color:var(--text-primary);">Parallel Classifiers Prediction</strong><br/><span style="font-size:10px;color:var(--text-secondary);">Evaluate Random Forest, LightGBM, CatBoost...</span></div>
+                </div>
+                <div class="pipeline-step" id="pstep-5" style="opacity:0.4;transition:all 0.3s;display:flex;align-items:center;gap:10px;background:var(--bg-card);padding:8px 12px;border-radius:6px;border:1px solid var(--border);">
+                  <div class="step-num" style="width:20px;height:20px;border-radius:50%;background:var(--text-dim);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;">5</div>
+                  <div style="font-size:11.5px;"><strong style="color:var(--text-primary);">Risk Calibration & Verdict</strong><br/><span style="font-size:10px;color:var(--text-secondary);">Calibrate entropy & certs. Produce Threat Verdict.</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scan Result Panel -->
+        <div id="scanner-result-panel" class="panel" style="display:none;animation:fadeInUp 0.4s;">
+          <div class="panel-header" style="border-color:var(--border-strong);">
+            <div class="panel-title" id="scan-res-filename">file_result.exe</div>
+            <span class="tag tag-red" id="scan-res-badge">MALWARE</span>
+          </div>
+          <div class="panel-body">
+            <div style="display:grid;grid-template-columns:300px 1fr;gap:20px;">
+              <div>
+                <div class="threat-gauge">
+                  <div class="gauge-ring" id="scanner-gauge-ring">
+                    <div class="gauge-inner">
+                      <span class="gauge-pct" id="scanner-gauge-pct">98.7%</span>
+                      <span class="gauge-lbl">threat score</span>
+                    </div>
+                  </div>
+                  <div class="threat-level" id="scanner-threat-level">DANGEROUS</div>
+                </div>
+                <div class="sep"></div>
+                <div class="threat-bars" id="scanner-model-bars">
+                  <!-- Dynamic Bars go here -->
+                </div>
+              </div>
+
+              <div>
+                <h4 style="font-family:var(--display);color:var(--text-primary);margin-bottom:10px;">File Structural Metadata</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+                  <div style="background:var(--bg-elevated);padding:10px;border-radius:6px;">
+                    <div style="font-size:9px;color:var(--text-dim);">FILE SIZE</div>
+                    <div style="font-size:14px;color:white;font-weight:bold;margin-top:2px;" id="smd-size">--</div>
+                  </div>
+                  <div style="background:var(--bg-elevated);padding:10px;border-radius:6px;">
+                    <div style="font-size:9px;color:var(--text-dim);">VIRTUAL SIZE</div>
+                    <div style="font-size:14px;color:white;font-weight:bold;margin-top:2px;" id="smd-vsize">--</div>
+                  </div>
+                  <div style="background:var(--bg-elevated);padding:10px;border-radius:6px;">
+                    <div style="font-size:9px;color:var(--text-dim);">SECTIONS COUNT</div>
+                    <div style="font-size:14px;color:white;font-weight:bold;margin-top:2px;" id="smd-sections">--</div>
+                  </div>
+                  <div style="background:var(--bg-elevated);padding:10px;border-radius:6px;">
+                    <div style="font-size:9px;color:var(--text-dim);">TOTAL IMPORTS</div>
+                    <div style="font-size:14px;color:white;font-weight:bold;margin-top:2px;" id="smd-imports">--</div>
+                  </div>
+                </div>
+
+                <h4 style="font-family:var(--display);color:var(--text-primary);margin-bottom:10px;">Threat Intelligence Indicators</h4>
+                <div id="scanner-indicators-list" style="display:flex;flex-direction:column;gap:8px;">
+                  <!-- Dynamic Indicators go here -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: THREAT FEED ── -->
+      <div id="view-feed" class="dashboard-view" style="display:none;">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Global Malware Threat Intelligence Feed</div>
+            <div class="search-box" style="width:250px;">
+              <input type="text" id="feed-search" placeholder="Filter CVE / Name...">
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Threat / Family</th>
+                  <th>Type</th>
+                  <th>Primary Vector</th>
+                  <th>Global Impact</th>
+                  <th>ML Signature Match</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="feed-table-body">
+                <tr>
+                  <td><strong style="color:var(--red);">LockBit 3.0 Variant</strong><br/><span style="font-size:9px;color:var(--text-dim);">CVE-2024-3094 Exploiter</span></td>
+                  <td><span class="tag tag-red">Ransomware</span></td>
+                  <td>UPX Packed / Process Hollowing</td>
+                  <td><span style="color:var(--red);">CRITICAL</span></td>
+                  <td><span class="text-cyan">99.6% (RF-v3)</span></td>
+                  <td><span class="tag tag-red pulse" style="padding:2px 6px;">ACTIVE</span></td>
+                </tr>
+                <tr>
+                  <td><strong style="color:var(--amber);">AgentTesla Spyware</strong><br/><span style="font-size:9px;color:var(--text-dim);">API Hijacker</span></td>
+                  <td><span class="tag tag-amber">Spyware</span></td>
+                  <td>Suspicious Imports (WriteProcessMemory)</td>
+                  <td><span style="color:var(--amber);">HIGH</span></td>
+                  <td><span class="text-cyan">96.8% (LGB-v2)</span></td>
+                  <td><span class="tag tag-amber" style="padding:2px 6px;">MONITORED</span></td>
+                </tr>
+                <tr>
+                  <td><strong style="color:var(--red);">WarmCookie Backdoor</strong><br/><span style="font-size:9px;color:var(--text-dim);">Dropper DLL</span></td>
+                  <td><span class="tag tag-red">Trojan</span></td>
+                  <td>Non-standard Sections (Low Entropy)</td>
+                  <td><span style="color:var(--red);">HIGH</span></td>
+                  <td><span class="text-cyan">87.4% (RF-v3)</span></td>
+                  <td><span class="tag tag-red pulse" style="padding:2px 6px;">ACTIVE</span></td>
+                </tr>
+                <tr>
+                  <td><strong style="color:var(--purple);">Necurs Rootkit</strong><br/><span style="font-size:9px;color:var(--text-dim);">Kernel Driver</span></td>
+                  <td><span class="tag tag-purple" style="color:var(--purple)">Rootkit</span></td>
+                  <td>Stripped Debug / High Entropy Sections</td>
+                  <td><span style="color:var(--purple);">CRITICAL</span></td>
+                  <td><span class="text-cyan">94.1% (LR-v1)</span></td>
+                  <td><span class="tag tag-green" style="padding:2px 6px;">MITIGATED</span></td>
+                </tr>
+                <tr>
+                  <td><strong style="color:var(--green);">PUP.Optional.Conduit</strong><br/><span style="font-size:9px;color:var(--text-dim);">Adware installer</span></td>
+                  <td><span class="tag tag-green">Adware</span></td>
+                  <td>Signed certificate / Normal imports</td>
+                  <td><span style="color:var(--green);">LOW</span></td>
+                  <td><span class="text-cyan">0.05% (Clean)</span></td>
+                  <td><span class="tag tag-green" style="padding:2px 6px;">SAFE</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: INCIDENTS ── -->
+      <div id="view-incidents" class="dashboard-view" style="display:none;">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Active Endpoint Security Incident Console</div>
+            <span class="tag tag-red pulse" id="incidents-count-badge">3 Pending Actions</span>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Endpoint Host</th>
+                  <th>Trigger File</th>
+                  <th>Detection Reason</th>
+                  <th>Severity</th>
+                  <th>Date & Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="incidents-table-body">
+                <tr id="incident-row-1">
+                  <td><strong>SRV-FINANCE-01</strong><br/><span style="font-size:9px;color:var(--text-dim);">IP: 192.168.1.45</span></td>
+                  <td><span style="font-family:var(--mono);color:white;">invoice_2026_test.exe</span><br/><span style="font-size:9px;color:var(--text-dim);">MD5: 5a8e2b8109d9</span></td>
+                  <td><span class="text-red">98.7% Ransomware Risk (Random Forest)</span></td>
+                  <td><span class="tag tag-red">CRITICAL</span></td>
+                  <td class="text-dim">May 20, 01:45</td>
+                  <td>
+                    <div style="display:flex;gap:4px;">
+                      <button class="btn btn-primary quarantine-btn" data-id="1" style="padding:4px 8px;font-size:10px;">Quarantine</button>
+                      <button class="btn btn-ghost examine-xai-btn" data-verdict="MALWARE" data-score="98.7" style="padding:4px 8px;font-size:10px;">Examine Tree</button>
+                      <button class="btn btn-ghost ignore-btn" data-id="1" style="padding:4px 8px;font-size:10px;">Ignore</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr id="incident-row-2">
+                  <td><strong>PC-DEV-KIM</strong><br/><span style="font-size:9px;color:var(--text-dim);">IP: 192.168.3.112</span></td>
+                  <td><span style="font-family:var(--mono);color:white;">unknown_payload.exe</span><br/><span style="font-size:9px;color:var(--text-dim);">MD5: 8f9a0c1284d7</span></td>
+                  <td><span class="text-amber">87.4% Trojan Signature Match (LightGBM)</span></td>
+                  <td><span class="tag tag-amber">HIGH</span></td>
+                  <td class="text-dim">May 20, 01:12</td>
+                  <td>
+                    <div style="display:flex;gap:4px;">
+                      <button class="btn btn-primary quarantine-btn" data-id="2" style="padding:4px 8px;font-size:10px;">Quarantine</button>
+                      <button class="btn btn-ghost examine-xai-btn" data-verdict="MALWARE" data-score="87.4" style="padding:4px 8px;font-size:10px;">Examine Tree</button>
+                      <button class="btn btn-ghost ignore-btn" data-id="2" style="padding:4px 8px;font-size:10px;">Ignore</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr id="incident-row-3">
+                  <td><strong>SRV-DMZ-MAIL</strong><br/><span style="font-size:9px;color:var(--text-dim);">IP: 10.0.0.12</span></td>
+                  <td><span style="font-family:var(--mono);color:white;">outlook_patch.exe</span><br/><span style="font-size:9px;color:var(--text-dim);">MD5: b3c921fe770a</span></td>
+                  <td><span class="text-amber">74.2% Suspicious API Imports (Logistic Reg)</span></td>
+                  <td><span class="tag tag-amber">MEDIUM</span></td>
+                  <td class="text-dim">May 19, 23:30</td>
+                  <td>
+                    <div style="display:flex;gap:4px;">
+                      <button class="btn btn-primary quarantine-btn" data-id="3" style="padding:4px 8px;font-size:10px;">Quarantine</button>
+                      <button class="btn btn-ghost examine-xai-btn" data-verdict="MALWARE" data-score="74.2" style="padding:4px 8px;font-size:10px;">Examine Tree</button>
+                      <button class="btn btn-ghost ignore-btn" data-id="3" style="padding:4px 8px;font-size:10px;">Ignore</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: MODELS ── -->
+      <div id="view-models" class="dashboard-view" style="display:none;">
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header">
+            <div class="panel-title">Model Evaluation Dashboard</div>
+            <span class="tag tag-purple">6 Classifiers Loaded</span>
+          </div>
+          <div class="panel-body">
+            <p style="color:var(--text-secondary);margin-bottom:15px;">Real-world metrics extracted from `baseline_results.csv` generated in `final-project-cs114.ipynb`.</p>
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:14px;" id="models-eval-grid">
+              <!-- Dynamically populated from API -->
+            </div>
+          </div>
+        </div>
+
+        <div class="row-2col" style="grid-template-columns: 1fr 1fr;">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Interactive Confusion Matrix</div></div>
+            <div class="panel-body" style="display:flex;flex-direction:column;align-items:center;">
+              <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                <button class="btn btn-ghost select-cf-model active" data-model="Random Forest">Random Forest</button>
+                <button class="btn btn-ghost select-cf-model" data-model="CatBoost">CatBoost</button>
+                <button class="btn btn-ghost select-cf-model" data-model="XGBoost">XGBoost</button>
+                <button class="btn btn-ghost select-cf-model" data-model="LightGBM">LightGBM</button>
+                <button class="btn btn-ghost select-cf-model" data-model="AdaBoost">AdaBoost</button>
+                <button class="btn btn-ghost select-cf-model" data-model="Logistic Regression">Logistic Reg</button>
+              </div>
+              <div class="confusion-matrix" style="display:grid;grid-template-columns:100px 100px;grid-template-rows:100px 100px;gap:8px;position:relative;margin:20px 0;">
+                <div class="cf-cell" style="background:rgba(40,232,125,0.15);border:1px solid var(--green);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <span style="font-size:9px;color:var(--text-dim);">TRUE NEGATIVE</span>
+                  <strong style="font-size:18px;color:var(--green);" id="cf-tn">97,820</strong>
+                </div>
+                <div class="cf-cell" style="background:rgba(255,61,90,0.05);border:1px solid rgba(255,61,90,0.3);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <span style="font-size:9px;color:var(--text-dim);">FALSE POSITIVE</span>
+                  <strong style="font-size:18px;color:var(--red);" id="cf-fp">2,180</strong>
+                </div>
+                <div class="cf-cell" style="background:rgba(255,61,90,0.05);border:1px solid rgba(255,61,90,0.3);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <span style="font-size:9px;color:var(--text-dim);">FALSE NEGATIVE</span>
+                  <strong style="font-size:18px;color:var(--red);" id="cf-fn">3,100</strong>
+                </div>
+                <div class="cf-cell" style="background:rgba(40,232,125,0.15);border:1px solid var(--green);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <span style="font-size:9px;color:var(--text-dim);">TRUE POSITIVE</span>
+                  <strong style="font-size:18px;color:var(--green);" id="cf-tp">96,900</strong>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--text-secondary);text-align:center;">Evaluation dataset size: 200,000 samples</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Feature Importance Ranking</div></div>
+            <div class="panel-body" style="padding-top:10px;">
+              <p style="font-size:10px;color:var(--text-secondary);margin-bottom:10px;">Top 5 features calculated by Gini Importance / coefficients:</p>
+              <div class="threat-bars" id="feature-importance-bars">
+                <div class="threat-row">
+                  <span class="threat-type" style="width:120px;">F638 (Timestamp)</span>
+                  <div class="tbar-track"><div class="tbar-fill" style="width:95%;background:var(--cyan);"></div></div>
+                  <span class="threat-pct-label text-cyan" style="width:40px;">0.345</span>
+                </div>
+                <div class="threat-row">
+                  <span class="threat-type" style="width:120px;">F503 (Entropy)</span>
+                  <div class="tbar-track"><div class="tbar-fill" style="width:78%;background:var(--cyan);"></div></div>
+                  <span class="threat-pct-label text-cyan" style="width:40px;">0.282</span>
+                </div>
+                <div class="threat-row">
+                  <span class="threat-type" style="width:120px;">F2142 (Imports)</span>
+                  <div class="tbar-track"><div class="tbar-fill" style="width:62%;background:var(--cyan);"></div></div>
+                  <span class="threat-pct-label text-cyan" style="width:40px;">0.210</span>
+                </div>
+                <div class="threat-row">
+                  <span class="threat-type" style="width:120px;">F504 (VSize)</span>
+                  <div class="tbar-track"><div class="tbar-fill" style="width:44%;background:var(--cyan);"></div></div>
+                  <span class="threat-pct-label text-cyan" style="width:40px;">0.144</span>
+                </div>
+                <div class="threat-row">
+                  <span class="threat-type" style="width:120px;">F1344 (Signature)</span>
+                  <div class="tbar-track"><div class="tbar-fill" style="width:30%;background:var(--cyan);"></div></div>
+                  <span class="threat-pct-label text-cyan" style="width:40px;">0.098</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Explanation panel for Random Forest Ensemble and Single Path -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="panel-header">
+            <div class="panel-title">Mối Liên Hệ Giữa Mô Hình Ensemble & Cây Quyết Định XAI</div>
+            <span class="tag tag-cyan">Lý Thuyết & Thực Tiễn</span>
+          </div>
+          <div class="panel-body" style="line-height:1.6;font-size:12px;color:var(--text-secondary);">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+              <div>
+                <h4 style="color:white;margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+                  <span style="color:var(--cyan);">🌲</span> Tại sao cây minh họa chỉ có 3 bậc?
+                </h4>
+                <p style="margin-bottom:12px;">
+                  Mô hình <strong>Random Forest</strong> baseline thực tế được huấn luyện với <strong>100 cây quyết định (estimators)</strong>, mỗi cây có độ sâu tối đa lên tới <strong>25+ bậc</strong> để học các mối quan hệ đặc trưng PE phức tạp từ tập dữ liệu EMBER.
+                </p>
+                <p>
+                  Để hiển thị trực quan hóa trên màn hình mà không làm người dùng bị quá tải thông tin, chúng tôi thiết kế một <strong>đường dẫn quyết định đại diện (Representative Decision Path)</strong> gồm 3 bậc quan trọng nhất (F638, F503, F1344). Nó mô tả chân thực cách các nút lá rẽ nhánh để đưa ra kết luận phân loại.
+                </p>
+              </div>
+              <div>
+                <h4 style="color:white;margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+                  <span style="color:var(--cyan);">🗳️</span> Cơ chế biểu quyết của Ensemble
+                </h4>
+                <p style="margin-bottom:12px;">
+                  Trong khi một cây đơn lẻ chỉ trả về kết quả nhị phân (Safe hoặc Malware), mô hình Random Forest tổng hợp dự đoán của tất cả 100 cây:
+                </p>
+                <div style="background:var(--bg-elevated);border:1px solid var(--border);padding:12px;border-radius:8px;display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                  <div style="font-size:24px;color:var(--purple);">🗳️</div>
+                  <div>
+                    <strong>Threat Score (Độ tự tin) = Số cây vote Malware / 100 cây</strong>
+                    <div style="font-size:11px;margin-top:4px;color:var(--text-dim);">
+                      Nếu 95 cây biểu quyết là SAFE và chỉ 5 cây biểu quyết là MALWARE ➔ Threat Score = 5%. Mô hình sẽ tự tin phân loại tệp là SAFE.
+                    </div>
+                  </div>
+                </div>
+                <p>
+                  Đây là lý do vì sao một phán quyết "SAFE" lại đi kèm một Threat Score nhỏ (ví dụ 4.2%), và phán quyết "MALWARE" đi kèm Threat Score lớn (ví dụ 98.7%). Độ tự tin của phán quyết tỉ lệ thuận với mức độ đồng thuận của các cây trong rừng.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: DATASETS ── -->
+      <div id="view-datasets" class="dashboard-view" style="display:none;">
+        <div class="row-2col" style="grid-template-columns: 1fr 1fr; margin-bottom:16px;">
+          <!-- Feature Distribution KDE -->
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">KDE Feature Distribution</div><span class="tag tag-cyan">F738 Section Size</span></div>
+            <div class="panel-body">
+              <p style="font-size:10px;color:var(--text-secondary);margin-bottom:12px;">Probability density curves comparison of benign vs malware executables:</p>
+              
+              <div style="position:relative;height:180px;background:var(--bg-base);border-radius:6px;border:1px solid var(--border);padding:10px;">
+                <svg viewBox="0 0 400 150" style="width:100%;height:100%;" preserveAspectRatio="none">
+                  <!-- Malware KDE line -->
+                  <path d="M10,140 C50,130 90,100 130,50 C170,10 210,50 250,90 C290,120 330,135 390,140" fill="none" stroke="var(--red)" stroke-width="2"/>
+                  <path d="M10,140 C50,130 90,100 130,50 C170,10 210,50 250,90 C290,120 330,135 390,140 L390,148 L10,148 Z" fill="rgba(255,61,90,0.06)"/>
+                  
+                  <!-- Benign KDE line -->
+                  <path d="M10,140 C50,80 90,40 130,100 C170,130 210,138 250,140 C290,140 330,140 390,140" fill="none" stroke="var(--green)" stroke-width="2"/>
+                  <path d="M10,140 C50,80 90,40 130,100 C170,130 210,138 250,140 C290,140 330,140 390,140 L390,148 L10,148 Z" fill="rgba(40,232,125,0.05)"/>
+                </svg>
+              </div>
+              <div style="display:flex;justify-content:center;gap:12px;margin-top:8px;font-size:10px;">
+                <span style="color:var(--green);">● Benign KDE</span>
+                <span style="color:var(--red);">● Malware KDE</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feature Correlation Heatmap -->
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Feature Correlation Matrix</div><span class="tag tag-purple">Top 10 Features</span></div>
+            <div class="panel-body" style="display:flex;flex-direction:column;align-items:center;padding:12px;">
+              <div style="display:grid;grid-template-columns:repeat(10, 24px);gap:2px;background:var(--bg-base);padding:6px;border-radius:6px;border:1px solid var(--border);" id="correlation-heatmap-container">
+                <!-- Dynamically generated correlation tiles -->
+              </div>
+              <div style="display:flex;justify-content:space-between;width:240px;margin-top:10px;font-size:9px;color:var(--text-secondary);">
+                <span>-1.0 (Inverse)</span>
+                <span>0.0 (None)</span>
+                <span>1.0 (Positive)</span>
+              </div>
+              <div style="width:240px;height:6px;background:linear-gradient(90deg, #ff3d5a, #070b12, #00d2c8);border-radius:3px;margin-top:3px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">EMBER Dataset Information</div></div>
+          <div class="panel-body" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:15px;">
+            <div style="background:var(--bg-elevated);padding:14px;border-radius:8px;border:1px solid var(--border);">
+              <div style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;">Training Samples</div>
+              <strong style="font-size:20px;color:var(--cyan);font-family:var(--display);display:block;margin-top:4px;">1,200,000</strong>
+              <span style="font-size:10.5px;color:var(--text-dim);margin-top:2px;display:block;">Balanced: 50% Safe / 50% Malicious</span>
+            </div>
+            <div style="background:var(--bg-elevated);padding:14px;border-radius:8px;border:1px solid var(--border);">
+              <div style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;">Validation Samples</div>
+              <strong style="font-size:20px;color:var(--cyan);font-family:var(--display);display:block;margin-top:4px;">240,000</strong>
+              <span style="font-size:10.5px;color:var(--text-dim);margin-top:2px;display:block;">Independent hold-out set</span>
+            </div>
+            <div style="background:var(--bg-elevated);padding:14px;border-radius:8px;border:1px solid var(--border);">
+              <div style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;">Features Vector Layout</div>
+              <strong style="font-size:20px;color:var(--cyan);font-family:var(--display);display:block;margin-top:4px;">2,381 Features</strong>
+              <span style="font-size:10.5px;color:var(--text-dim);margin-top:2px;display:block;">Ember raw structural profile mapping</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: TRAINING RUNS ── -->
+      <div id="view-training" class="dashboard-view" style="display:none;">
+        <div class="row-2col" style="grid-template-columns: 320px 1fr;">
+          <!-- Hyperparameter Configuration Panel -->
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Training Config</div></div>
+            <div class="panel-body" style="display:flex;flex-direction:column;gap:12px;">
+              <div>
+                <label style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;display:block;margin-bottom:5px;">Target Algorithm</label>
+                <select id="train-algo" style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);color:white;padding:6px;border-radius:5px;font-family:var(--mono);outline:none;">
+                  <option value="Random Forest">Random Forest v4</option>
+                  <option value="LightGBM">LightGBM v3</option>
+                  <option value="XGBoost">XGBoost v2</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;display:block;margin-bottom:5px;">Estimators / Trees: <span id="val-estimators" style="color:var(--cyan);font-weight:bold;">100</span></label>
+                <input type="range" id="train-estimators" min="10" max="500" value="100" style="width:100%;accent-color:var(--cyan);" />
+              </div>
+
+              <div>
+                <label style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;display:block;margin-bottom:5px;">Learning Rate: <span id="val-lr" style="color:var(--cyan);font-weight:bold;">0.05</span></label>
+                <input type="range" id="train-lr" min="0.01" max="0.3" step="0.01" value="0.05" style="width:100%;accent-color:var(--cyan);" />
+              </div>
+
+              <div>
+                <label style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;display:block;margin-bottom:5px;">Max Depth: <span id="val-depth" style="color:var(--cyan);font-weight:bold;">8</span></label>
+                <input type="range" id="train-depth" min="3" max="25" value="8" style="width:100%;accent-color:var(--cyan);" />
+              </div>
+
+              <div class="sep" style="margin:8px 0;"></div>
+              <button class="btn btn-primary" id="btn-start-training" style="justify-content:center;">🚀 Start Hyperparameter Run</button>
+            </div>
+          </div>
+
+          <!-- Training Live Runs Chart and Logs -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Training Progress Console</div>
+              <span class="tag tag-cyan" id="training-status-badge">Idle</span>
+            </div>
+            <div class="panel-body">
+              <div style="display:grid;grid-template-columns:1fr 200px;gap:15px;margin-bottom:15px;">
+                <div style="position:relative;height:160px;background:var(--bg-base);border:1px solid var(--border);border-radius:6px;padding:10px;">
+                  <svg viewBox="0 0 400 150" style="width:100%;height:100%;" preserveAspectRatio="none" id="training-svg">
+                    <line x1="0" y1="130" x2="400" y2="130" stroke="rgba(0,210,200,0.1)"/>
+                    <!-- Training curves will be drawn dynamically -->
+                  </svg>
+                </div>
+                <div style="font-size:10.5px;color:var(--text-secondary);display:flex;flex-direction:column;gap:8px;">
+                  <div>EPOCH: <strong id="tr-epoch" style="color:white;">0/50</strong></div>
+                  <div>LOSS: <strong id="tr-loss" style="color:var(--red);">0.000</strong></div>
+                  <div>VAL ACC: <strong id="tr-acc" style="color:var(--green);">0.0%</strong></div>
+                  <div>GPU UTIL: <strong style="color:var(--amber);">RTX 4090 · 92%</strong></div>
+                </div>
+              </div>
+              <div class="terminal" id="training-terminal" style="max-height:100px;">
+                <div class="t-line"><span class="t-time">00:00:00</span><span class="t-tag t-info">[TRAIN]</span><span class="t-msg">Ready to initialize GPU environment. Select parameters and click Start.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: EXPLAINABILITY (XAI) ── -->
+      <div id="view-explainability" class="dashboard-view" style="display:none;">
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header"><div class="panel-title">Explainable AI (XAI) Tree Player</div></div>
+          <div class="panel-body" style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+            <!-- Player controls inside the explainability console -->
+            <div style="display:flex;gap:10px;background:var(--bg-base);padding:8px 12px;border-radius:8px;border:1px solid var(--border);">
+              <button class="btn btn-ghost" id="xai-btn-reset-embed">⏮ Reset</button>
+              <button class="btn btn-ghost" id="xai-btn-prev-embed">◀ Prev</button>
+              <button class="btn btn-primary" id="xai-btn-play-embed" style="background:var(--cyan);color:#050d10;">⏯ Play / Pause</button>
+              <button class="btn btn-ghost" id="xai-btn-next-embed">▶ Next</button>
+            </div>
+            
+            <div style="display:flex;flex-direction:column;align-items:center;width:100%;min-height:280px;position:relative;background:var(--bg-base);border-radius:10px;padding:20px;border:1px solid var(--border);">
+              <!-- Node Root -->
+              <div id="xnode-root-embed" style="background:rgba(139,92,246,0.1);border:1px solid var(--purple);border-radius:8px;padding:10px 15px;text-align:center;width:200px;transition:all 0.3s;">
+                <div style="font-size:10px;color:var(--purple);text-transform:uppercase;font-weight:700;">Root: F638 Timestamp</div>
+                <div style="font-size:14px;color:white;font-weight:bold;margin-top:5px;" id="xval-root-embed">1504401044</div>
+              </div>
+              
+              <!-- Connector -->
+              <div style="width:2px;height:30px;background:var(--border-strong);"></div>
+              
+              <!-- Level 2 container -->
+              <div style="display:flex;justify-content:space-between;width:400px;position:relative;">
+                <!-- Top Horizontal Connector -->
+                <div style="position:absolute;top:0;left:100px;right:100px;height:2px;background:var(--border-strong);"></div>
+                
+                <!-- Branch Left -->
+                <div style="display:flex;flex-direction:column;align-items:center;margin-top:2px;">
+                  <div style="width:2px;height:30px;background:var(--border-strong);"></div>
+                  <div id="xnode-left-embed" style="background:rgba(0,210,200,0.1);border:1px solid var(--cyan);border-radius:8px;padding:10px 15px;text-align:center;width:160px;transition:all 0.3s;opacity:0.4;">
+                    <div style="font-size:10px;color:var(--cyan);text-transform:uppercase;font-weight:700;">F503 Section Entropy</div>
+                    <div style="font-size:14px;color:white;font-weight:bold;margin-top:5px;" id="xval-entropy-embed">7.91</div>
+                  </div>
+                  <!-- Arrow to result -->
+                  <div style="width:2px;height:30px;background:var(--border-strong);"></div>
+                  <div id="xnode-left-result-embed" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:10px 15px;text-align:center;width:120px;transition:all 0.3s;opacity:0.4;">
+                    <div style="font-size:12px;color:var(--text-secondary);font-weight:bold;" id="xval-left-res-embed">--</div>
+                  </div>
+                </div>
+                
+                <!-- Branch Right -->
+                <div style="display:flex;flex-direction:column;align-items:center;margin-top:2px;">
+                  <div style="width:2px;height:30px;background:var(--border-strong);"></div>
+                  <div id="xnode-right-embed" style="background:rgba(245,166,35,0.1);border:1px solid var(--amber);border-radius:8px;padding:10px 15px;text-align:center;width:160px;transition:all 0.3s;opacity:0.4;">
+                    <div style="font-size:10px;color:var(--amber);text-transform:uppercase;font-weight:700;">F1344 Digital Cert</div>
+                    <div style="font-size:14px;color:white;font-weight:bold;margin-top:5px;" id="xval-sig-embed">Unsigned</div>
+                  </div>
+                  <!-- Arrow to result -->
+                  <div style="width:2px;height:30px;background:var(--border-strong);"></div>
+                  <div id="xnode-right-result-embed" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:10px 15px;text-align:center;width:120px;transition:all 0.3s;opacity:0.4;">
+                    <div style="font-size:12px;color:var(--text-secondary);font-weight:bold;" id="xval-right-res-embed">--</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="xai-log-embed" style="font-size:11px;color:var(--text-secondary);font-family:var(--mono);">Select any scan result or click play to simulate step-by-step decision rules.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">SHAP Force Explainer (Global Impacts)</div></div>
+          <div class="panel-body" style="padding-top:10px;">
+            <p style="font-size:10.5px;color:var(--text-secondary);margin-bottom:12px;">Feature impact force indicating how much they push the model prediction score higher (Red) or lower (Blue):</p>
+            <div style="display:flex;height:24px;border-radius:4px;overflow:hidden;border:1px solid var(--border);margin-bottom:10px;">
+              <div style="width:35%;background:var(--red);color:white;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;">Entropy: +0.32</div>
+              <div style="width:25%;background:var(--red);opacity:0.8;color:white;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;">No Cert: +0.22</div>
+              <div style="width:20%;background:var(--cyan);opacity:0.8;color:white;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;">Debug: -0.15</div>
+              <div style="width:20%;background:var(--cyan);color:white;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;">Size: -0.12</div>
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary);text-align:center;">Base prediction probability: 0.50 ➔ Final risk: 0.77 (Dangerous)</div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:16px;">
+          <div class="panel-header">
+            <div class="panel-title">Cơ Chế Quyết Định & Độ Tự Tin Của Mô Hình</div>
+            <span class="tag tag-cyan">Ensemble Voting</span>
+          </div>
+          <div class="panel-body" style="line-height:1.6;font-size:12px;color:var(--text-secondary);">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+              <div>
+                <h4 style="color:white;margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+                  <span style="color:var(--cyan);">ℹ</span> Giải thích về Số lượng Cây & Độ Phức Tạp
+                </h4>
+                <p style="margin-bottom:10px;">
+                  Mô hình Random Forest và các bộ phân loại Boosting thực chất được cấu thành từ hàng trăm cây quyết định riêng lẻ (với số lượng cây mặc định là 100 và độ sâu lên tới 25 tầng). Việc vẽ toàn bộ hàng trăm cây lên màn hình là điều không khả thi. 
+                </p>
+                <p>
+                  Do đó, <strong>Trình phát cây XAI</strong> ở trên mô phỏng một <strong>cây quyết định đại diện (Representative Tree)</strong> đại diện cho các luật phân tích rẽ nhánh cốt lõi dựa trên các đặc trưng PE hàng đầu như Timestamp (F638), Section Entropy (F503), và Chữ ký số (F1344).
+                </p>
+              </div>
+              
+              <div>
+                <h4 style="color:white;margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+                  <span style="color:var(--cyan);">📊</span> Tại sao Threat Score cực thấp/cao thể hiện Độ Tự Tin Lớn?
+                </h4>
+                <p style="margin-bottom:12px;">
+                  Khi bạn thấy một kết quả quét có <strong>Threat Score: 4.2%</strong> (như tệp <code>putty_benign.exe</code>) được kết luận là <strong>SAFE / BENIGN</strong>, điều này không có nghĩa là mô hình thiếu tự tin hay nghi ngờ.
+                </p>
+                <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.3);padding:10px;border-radius:8px;margin-bottom:10px;">
+                  <div style="font-weight:bold;color:var(--green);margin-bottom:4px;">Cơ chế biểu quyết số đông (Majority Vote):</div>
+                  Trong số 100 cây quyết định độc lập của Random Forest:
+                  <ul style="margin:4px 0 0 16px;padding:0;list-style-type:disc;">
+                    <li>Chỉ có <strong>4 cây</strong> vote đây là <strong>MALWARE</strong></li>
+                    <li>Có tới <strong>96 cây</strong> vote tệp này là <strong>SAFE/BENIGN</strong></li>
+                  </ul>
+                  Vì tỷ lệ biểu quyết Malware thấp hơn nhiều so với ngưỡng 50%, mô hình đưa ra kết luận cuối cùng là <strong>SAFE</strong> với độ đồng thuận cực kỳ cao (96/100 cây đồng thuận).
+                </div>
+                <p>
+                  Ngược lại, nếu Threat Score là <strong>98.7%</strong> (như <code>wannacry_ransomware.exe</code>), nghĩa là 98.7% số cây đồng thuận tệp là Malware, mang lại độ tự tin cực lớn cho phán quyết tệp nguy hiểm.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: API KEYS ── -->
+      <div id="view-apikeys" class="dashboard-view" style="display:none;">
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header">
+            <div class="panel-title">Developer API Integration Keys</div>
+            <button class="btn btn-primary" id="btn-generate-api" style="padding:5px 12px;font-size:11px;">+ Generate Key</button>
+          </div>
+          <div class="panel-body">
+            <p style="color:var(--text-secondary);margin-bottom:15px;">Use these keys to make machine learning predictions on PE executables remotely via our REST API endpoints.</p>
+            <div style="display:flex;flex-direction:column;gap:10px;" id="api-keys-list">
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-elevated);padding:12px;border-radius:8px;border:1px solid var(--border);">
+                <div>
+                  <strong style="color:white;font-size:12px;">Production Threat Scanner Key</strong>
+                  <div style="font-family:var(--mono);font-size:11px;color:var(--cyan);margin-top:4px;">
+                    <span class="key-value-hidden">ml_live_82b9e19d3f...</span>
+                    <span class="key-value-full" style="display:none;">ml_live_82b9e19d3fa8e2b8109d9c6eef2b11ff</span>
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn btn-ghost copy-api-btn" style="padding:4px 8px;font-size:10px;">Copy Key</button>
+                  <button class="btn btn-ghost delete-api-btn" style="padding:4px 8px;font-size:10px;color:var(--red);">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">API Server Log Details</div></div>
+          <div class="panel-body" style="padding:10px 12px">
+            <div class="terminal" id="api-calls-terminal">
+              <div class="t-line"><span class="t-time">01:45:00</span><span class="t-tag t-ok">[API]</span><span class="t-msg">POST /api/predict (invoice_2026_test.exe) ➔ 200 OK (98.7% malware score)</span></div>
+              <div class="t-line"><span class="t-time">01:12:05</span><span class="t-tag t-ok">[API]</span><span class="t-msg">POST /api/predict (unknown_payload.exe) ➔ 200 OK (87.4% malware score)</span></div>
+              <div class="t-line"><span class="t-time">00:30:12</span><span class="t-tag t-ok">[API]</span><span class="t-msg">GET /api/pipeline ➔ 200 OK</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: SETTINGS ── -->
+      <div id="view-settings" class="dashboard-view" style="display:none;">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Global Detection Engine Configuration</div></div>
+          <div class="panel-body" style="display:flex;flex-direction:column;gap:20px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+              <div>
+                <h4 style="font-family:var(--display);color:white;margin-bottom:10px;">Engine Properties</h4>
+                
+                <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-elevated);padding:12px;border-radius:6px;border:1px solid var(--border);margin-bottom:10px;">
+                  <div>
+                    <strong>Risk Score Calibration</strong>
+                    <div style="font-size:9.5px;color:var(--text-secondary);margin-top:2px;">Blend ML scores with structural rules (Entropy, Signatures).</div>
+                  </div>
+                  <label class="switch" style="position:relative;display:inline-block;width:38px;height:20px;">
+                    <input type="checkbox" id="setting-calibration" checked style="opacity:0;width:0;height:0;" />
+                    <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--text-dim);border-radius:34px;transition:0.4s;"></span>
+                  </label>
+                </div>
+
+                <div style="background:var(--bg-elevated);padding:12px;border-radius:6px;border:1px solid var(--border);">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <strong>Decision Cutoff Threshold</strong>
+                    <strong style="color:var(--cyan);" id="label-setting-threshold">0.50</strong>
+                  </div>
+                  <div style="font-size:9.5px;color:var(--text-secondary);margin-bottom:8px;">Min score needed to issue a MALWARE verdict.</div>
+                  <input type="range" id="setting-threshold" min="0.10" max="0.90" step="0.05" value="0.50" style="width:100%;accent-color:var(--cyan);" />
+                </div>
+              </div>
+
+              <div>
+                <h4 style="font-family:var(--display);color:white;margin-bottom:10px;">Theme & Customization</h4>
+                
+                <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-elevated);padding:12px;border-radius:6px;border:1px solid var(--border);margin-bottom:10px;">
+                  <div>
+                    <strong>Aesthetic Mode (Light Theme)</strong>
+                    <div style="font-size:9.5px;color:var(--text-secondary);margin-top:2px;">Toggle between Sleek Cyber Dark & Technical High-Contrast Light.</div>
+                  </div>
+                  <label class="switch" style="position:relative;display:inline-block;width:38px;height:20px;">
+                    <input type="checkbox" id="setting-theme-toggle" style="opacity:0;width:0;height:0;" />
+                    <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--text-dim);border-radius:34px;transition:0.4s;"></span>
+                  </label>
+                </div>
+
+                <div style="background:var(--bg-elevated);padding:12px;border-radius:6px;border:1px solid var(--border);">
+                  <strong>System Info</strong>
+                  <div style="font-size:10px;color:var(--text-secondary);line-height:1.8;margin-top:6px;">
+                    <div>Python: v3.10.12 · Flask: v3.0.3</div>
+                    <div>Environment: local · Port: 5000 / 8000</div>
+                    <div>Hardware: GPU-enabled (NVIDIA RTX 4090 VRAM)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="sep" style="margin:5px 0;"></div>
+            <div style="display:flex;justify-content:flex-end;">
+              <button class="btn btn-primary" id="btn-save-settings" style="padding:8px 20px;">Save Engine Settings</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div>
+
+<!-- XAI Decision Tree Modal -->
+<div id="xai-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:var(--bg-panel);border:1px solid var(--border-strong);border-radius:12px;width:90%;max-width:800px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,210,200,0.1);">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;">
+      <h3 style="font-family:var(--display);font-size:16px;color:var(--text-primary);margin:0;">XAI: Quyết định Mô hình</h3>
+      <button onclick="document.getElementById('xai-modal').style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:20px;">&times;</button>
+    </div>
+    <div style="padding:20px;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:20px;background:var(--bg-card);">
+      
+      <!-- VisuAlgo Player Controls -->
+      <div style="display:flex;gap:10px;background:var(--bg-base);padding:10px 15px;border-radius:8px;border:1px solid var(--border);">
+        <button class="btn btn-ghost" id="xai-btn-reset">⏮ Reset</button>
+        <button class="btn btn-ghost" id="xai-btn-prev">◀ Prev</button>
+        <button class="btn btn-primary" id="xai-btn-play">⏯ Play / Pause</button>
+        <button class="btn btn-ghost" id="xai-btn-next">▶ Next</button>
+      </div>
+
+      <!-- XAI Tree (Simplified) -->
+      <div style="display:flex;flex-direction:column;align-items:center;width:100%;min-height:300px;position:relative;background:var(--bg-base);border-radius:10px;padding:20px;border:1px solid var(--border);">
+        <!-- Node Root -->
+        <div id="xnode-root" style="background:rgba(139,92,246,0.1);border:1px solid var(--purple);border-radius:8px;padding:10px 15px;text-align:center;width:200px;transition:all 0.3s;">
+          <div style="font-size:10px;color:var(--purple);text-transform:uppercase;font-weight:700;">Root: Timestamp</div>
+          <div style="font-size:14px;color:white;font-weight:bold;margin-top:5px;" id="xval-root">--</div>
+        </div>
+        
+        <!-- Connector -->
+        <div style="width:2px;height:30px;background:var(--border-strong);"></div>
+        
+        <!-- Level 2 container -->
+        <div style="display:flex;justify-content:space-between;width:400px;position:relative;">
+          <!-- Top Horizontal Connector -->
+          <div style="position:absolute;top:0;left:100px;right:100px;height:2px;background:var(--border-strong);"></div>
+          
+          <!-- Branch Left -->
+          <div style="display:flex;flex-direction:column;align-items:center;margin-top:2px;">
+            <div style="width:2px;height:30px;background:var(--border-strong);"></div>
+            <div id="xnode-left" style="background:rgba(0,210,200,0.1);border:1px solid var(--cyan);border-radius:8px;padding:10px 15px;text-align:center;width:160px;transition:all 0.3s;opacity:0.4;">
+              <div style="font-size:10px;color:var(--cyan);text-transform:uppercase;font-weight:700;">Section Entropy</div>
+              <div style="font-size:14px;color:white;font-weight:bold;margin-top:5px;" id="xval-entropy">--</div>
+            </div>
+            <!-- Arrow to result -->
+            <div style="width:2px;height:30px;background:var(--border-strong);"></div>
+            <div id="xnode-left-result" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:10px 15px;text-align:center;width:120px;transition:all 0.3s;opacity:0.4;">
+              <div style="font-size:12px;color:var(--text-secondary);font-weight:bold;">--</div>
+            </div>
+          </div>
+          
+          <!-- Branch Right -->
+          <div style="display:flex;flex-direction:column;align-items:center;margin-top:2px;">
+            <div style="width:2px;height:30px;background:var(--border-strong);"></div>
+            <div id="xnode-right" style="background:rgba(245,166,35,0.1);border:1px solid var(--amber);border-radius:8px;padding:10px 15px;text-align:center;width:160px;transition:all 0.3s;opacity:0.4;">
+              <div style="font-size:10px;color:var(--amber);text-transform:uppercase;font-weight:700;">Signature / Imports</div>
+              <div style="font-size:14px;color:white;font-weight:bold;margin-top:5px;" id="xval-sig">--</div>
+            </div>
+            <!-- Arrow to result -->
+            <div style="width:2px;height:30px;background:var(--border-strong);"></div>
+            <div id="xnode-right-result" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:10px 15px;text-align:center;width:120px;transition:all 0.3s;opacity:0.4;">
+              <div style="font-size:12px;color:var(--text-secondary);font-weight:bold;">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="xai-log" style="font-size:11px;color:var(--text-secondary);font-family:var(--mono);text-align:center;">Bấm Play để xem quá trình quyết định...</div>
+    </div>
+  </div>
+</div>
+
+<script src="index.js"></script>
 </body>
 </html>

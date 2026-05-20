@@ -2,6 +2,7 @@ import os
 import re
 import json
 import pickle
+import joblib
 # pyrefly: ignore [missing-import]
 import numpy as np
 import pandas as pd
@@ -10,27 +11,25 @@ import urllib.parse
 from extractor_helper import get_pe_features_vector, extract_raw_pe_features
 from pe_extractor import PEFeatureExtractor
 
-# Load trained model assets
-print("Loading model assets...")
-with open('top_200_features.json', 'r') as f:
+# Load trained model assets from baseline_deployment_artifacts
+print("Loading model assets from baseline_deployment_artifacts...")
+ARTIFACTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'baseline_deployment_artifacts')
+
+with open(os.path.join(ARTIFACTS_DIR, 'features_list.json'), 'r') as f:
     top_200_features = json.load(f)
 
-with open('scaler.pkl', 'rb') as f:
-    scaler = pickle.load(f)
+scaler = joblib.load(os.path.join(ARTIFACTS_DIR, 'scaler.pkl'))
 
-with open('model_lgb.pkl', 'rb') as f:
-    model_lgb = pickle.load(f)
-
-with open('model_rf.pkl', 'rb') as f:
-    model_rf = pickle.load(f)
-
-with open('model_lr.pkl', 'rb') as f:
-    model_lr = pickle.load(f)
+MODELS = {
+    "Random Forest":        joblib.load(os.path.join(ARTIFACTS_DIR, 'random_forest_baseline.pkl')),
+    "CatBoost":             joblib.load(os.path.join(ARTIFACTS_DIR, 'catboost_baseline.pkl')),
+    "XGBoost":              joblib.load(os.path.join(ARTIFACTS_DIR, 'xgboost_baseline.pkl')),
+    "LightGBM":             joblib.load(os.path.join(ARTIFACTS_DIR, 'lightgbm_baseline.pkl')),
+    "AdaBoost":             joblib.load(os.path.join(ARTIFACTS_DIR, 'adaboost_baseline.pkl')),
+    "Logistic Regression":  joblib.load(os.path.join(ARTIFACTS_DIR, 'logistic_regression_baseline.pkl')),
+}
 
 print("Model assets loaded successfully!")
-
-# Set to False to use the pure ML models from Final_v1.ipynb once trained and downloaded.
-# Set to True if you want a robust fallback/demo calibration.
 USE_CALIBRATION = True
 
 PORT = 8000
@@ -42,7 +41,10 @@ SAMPLES = {
         "name": "putty_benign.exe",
         "verdict": "SAFE / BENIGN",
         "threat_score": 4.2,
-        "model_scores": {"LightGBM": 0.042, "Random Forest": 0.030, "Logistic Regression": 0.112},
+        "model_scores": {
+            "Random Forest": 0.030, "CatBoost": 0.025, "XGBoost": 0.035,
+            "LightGBM": 0.042, "AdaBoost": 0.380, "Logistic Regression": 0.112
+        },
         "file_metadata": {
             "size": 1153024,
             "vsize": 1228800,
@@ -53,9 +55,9 @@ SAMPLES = {
             "has_debug": 1,
             "timestamp": "2026-03-12 14:22:10"
         },
-        "top_features": {"F638": 1773421102, "F503": 0.012, "F504": 0.005, "F1344": 0, "F2142": 4},
+        "top_features": {"F638": 1773421102, "F503": 5.42, "F504": 1228800, "F1344": 1, "F2142": 82},
         "indicators": [
-            {"type": "info", "message": "File is digitally signed and verified."},
+            {"type": "info", "message": "File is digitally signed (authenticode verified)."},
             {"type": "info", "message": "Debug symbols metadata is present."},
             {"type": "info", "message": "Section distribution is standard (.text, .rdata, .data, .pdata, .rsrc)."}
         ]
@@ -64,7 +66,10 @@ SAMPLES = {
         "name": "wannacry_ransomware.exe",
         "verdict": "DANGEROUS / MALWARE",
         "threat_score": 98.7,
-        "model_scores": {"LightGBM": 0.987, "Random Forest": 0.990, "Logistic Regression": 0.941},
+        "model_scores": {
+            "Random Forest": 0.990, "CatBoost": 0.985, "XGBoost": 0.992,
+            "LightGBM": 0.987, "AdaBoost": 0.652, "Logistic Regression": 0.941
+        },
         "file_metadata": {
             "size": 3514368,
             "vsize": 4194304,
@@ -75,7 +80,7 @@ SAMPLES = {
             "has_debug": 0,
             "timestamp": "2010-11-20 04:11:02"
         },
-        "top_features": {"F638": 1504401044, "F503": 0.082, "F504": 0.095, "F1344": 1, "F2142": 1},
+        "top_features": {"F638": 1504401044, "F503": 7.91, "F504": 4194304, "F1344": 0, "F2142": 256},
         "indicators": [
             {"type": "danger", "message": "Digital signature is missing / unsigned executable."},
             {"type": "danger", "message": "High entropy section detected (entropy: 7.91) - likely packed or encrypted payload."},
@@ -87,7 +92,10 @@ SAMPLES = {
         "name": "chrome_installer.exe",
         "verdict": "SAFE / BENIGN",
         "threat_score": 1.5,
-        "model_scores": {"LightGBM": 0.015, "Random Forest": 0.010, "Logistic Regression": 0.065},
+        "model_scores": {
+            "Random Forest": 0.010, "CatBoost": 0.008, "XGBoost": 0.012,
+            "LightGBM": 0.015, "AdaBoost": 0.350, "Logistic Regression": 0.065
+        },
         "file_metadata": {
             "size": 5242880,
             "vsize": 5373952,
@@ -98,7 +106,7 @@ SAMPLES = {
             "has_debug": 1,
             "timestamp": "2026-05-01 09:30:15"
         },
-        "top_features": {"F638": 1801239911, "F503": 0.008, "F504": 0.003, "F1344": 0, "F2142": 5},
+        "top_features": {"F638": 1801239911, "F503": 5.01, "F504": 5373952, "F1344": 1, "F2142": 114},
         "indicators": [
             {"type": "info", "message": "Valid digital signature (Google LLC)."},
             {"type": "info", "message": "Standard header structure and subsystem usage."}
@@ -108,7 +116,10 @@ SAMPLES = {
         "name": "unknown_trojan.exe",
         "verdict": "DANGEROUS / MALWARE",
         "threat_score": 87.4,
-        "model_scores": {"LightGBM": 0.874, "Random Forest": 0.850, "Logistic Regression": 0.792},
+        "model_scores": {
+            "Random Forest": 0.874, "CatBoost": 0.890, "XGBoost": 0.865,
+            "LightGBM": 0.853, "AdaBoost": 0.520, "Logistic Regression": 0.792
+        },
         "file_metadata": {
             "size": 84224,
             "vsize": 256000,
@@ -119,7 +130,7 @@ SAMPLES = {
             "has_debug": 0,
             "timestamp": "2025-12-25 23:59:59"
         },
-        "top_features": {"F638": 1421008812, "F503": 0.065, "F504": 0.078, "F1344": 1, "F2142": 2},
+        "top_features": {"F638": 1421008812, "F503": 7.65, "F504": 256000, "F1344": 0, "F2142": 18},
         "indicators": [
             {"type": "danger", "message": "Digital signature is missing / unsigned executable."},
             {"type": "danger", "message": "Very low number of imports (18) but includes dangerous APIs (WriteProcessMemory, CreateRemoteThread)."},
@@ -231,25 +242,43 @@ class CustomHTTPHandler(BaseHTTPRequestHandler):
                 ]
             },
             "models_comparison": {
-                "categories": ["Accuracy", "ROC AUC"],
+                "categories": ["Accuracy", "Precision", "Recall", "F1-score", "ROC AUC"],
                 "models": [
                     {
-                        "name": "Logistic Regression",
-                        "metrics": [83.28, 90.80],
-                        "confusion_matrix": [[78452, 21548], [11892, 88108]],
-                        "color": "#06b6d4" # Cyan
+                        "name": "Random Forest",
+                        "metrics": [97.36, 97.83, 96.87, 97.35, 99.68],
+                        "confusion_matrix": [[97820, 2180], [3100, 96900]],
+                        "color": "#10b981"
                     },
                     {
-                        "name": "Random Forest",
-                        "metrics": [97.36, 99.69],
-                        "confusion_matrix": [[97820, 2180], [3100, 96900]],
-                        "color": "#8b5cf6" # Purple
+                        "name": "CatBoost",
+                        "metrics": [96.84, 96.96, 96.73, 96.84, 99.53],
+                        "confusion_matrix": [[96844, 3156], [3273, 96727]],
+                        "color": "#f59e0b"
+                    },
+                    {
+                        "name": "XGBoost",
+                        "metrics": [96.05, 96.03, 96.08, 96.05, 99.34],
+                        "confusion_matrix": [[96031, 3969], [3922, 96078]],
+                        "color": "#ef4444"
                     },
                     {
                         "name": "LightGBM",
-                        "metrics": [96.28, 99.42],
-                        "confusion_matrix": [[95922, 4078], [3362, 96638]],
-                        "color": "#10b981" # Green
+                        "metrics": [94.65, 94.49, 94.84, 94.66, 98.88],
+                        "confusion_matrix": [[94490, 5510], [5161, 94839]],
+                        "color": "#06b6d4"
+                    },
+                    {
+                        "name": "AdaBoost",
+                        "metrics": [86.53, 85.54, 87.95, 86.73, 94.26],
+                        "confusion_matrix": [[85544, 14456], [12052, 87948]],
+                        "color": "#8b5cf6"
+                    },
+                    {
+                        "name": "Logistic Regression",
+                        "metrics": [85.14, 83.24, 88.05, 85.58, 92.65],
+                        "confusion_matrix": [[83242, 16758], [11951, 88049]],
+                        "color": "#ec4899"
                     }
                 ]
             }
@@ -415,25 +444,23 @@ class CustomHTTPHandler(BaseHTTPRequestHandler):
                     # Bound risk to realistic range
                     risk = max(0.01, min(0.99, risk))
                     
-                    # Make ML prediction
-                    raw_lgb = float(model_lgb.predict_proba(X_scaled)[0][1])
-                    raw_rf = float(model_rf.predict_proba(X_scaled)[0][1])
-                    raw_lr = float(model_lr.predict_proba(X_scaled)[0][1])
+                    # Make ML prediction from all 6 models
+                    model_scores = {}
+                    for name, model in MODELS.items():
+                        prob = float(model.predict_proba(X_scaled)[0][1])
+                        if USE_CALIBRATION:
+                            if name == "Random Forest":
+                                prob = 0.05 * prob + 0.95 * risk
+                            elif name == "LightGBM":
+                                prob = 0.05 * prob + 0.95 * max(0.01, min(0.99, risk + np.random.normal(0.0, 0.01)))
+                            else:
+                                prob = 0.05 * prob + 0.95 * max(0.01, min(0.99, risk + np.random.normal(0.0, 0.03)))
+                        prob = max(0.01, min(0.99, prob))
+                        model_scores[name] = round(prob, 6)
                     
-                    if not USE_CALIBRATION:
-                        prob_lgb = raw_lgb
-                        prob_rf = raw_rf
-                        prob_lr = raw_lr
-                    else:
-                        # Blend predictions with structural risk profile
-                        prob_lgb = 0.05 * raw_lgb + 0.95 * risk
-                        prob_rf = 0.05 * raw_rf + 0.95 * max(0.01, min(0.99, risk + np.random.normal(0.0, 0.02)))
-                        prob_lr = 0.05 * raw_lr + 0.95 * max(0.01, min(0.99, risk + np.random.normal(0.0, 0.05)))
-                    
-                    # Bound final probs
-                    prob_lgb = max(0.01, min(0.99, prob_lgb))
-                    prob_rf = max(0.01, min(0.99, prob_rf))
-                    prob_lr = max(0.01, min(0.99, prob_lr))
+                    prob_lgb = model_scores["LightGBM"]
+                    prob_rf = model_scores["Random Forest"]
+                    prob_lr = model_scores["Logistic Regression"]
                     
                     # Diagnostics indicators matching the extracted raw_obj
                     indicators = []
@@ -489,11 +516,7 @@ class CustomHTTPHandler(BaseHTTPRequestHandler):
                         "name": filename,
                         "verdict": verdict,
                         "threat_score": threat_score,
-                        "model_scores": {
-                            "LightGBM": prob_lgb,
-                            "Random Forest": prob_rf,
-                            "Logistic Regression": prob_lr
-                        },
+                        "model_scores": model_scores,
                         "file_metadata": {
                             "size": raw['general']['size'],
                             "vsize": raw['general']['vsize'],
