@@ -74,7 +74,14 @@ def predict():
                 samples = _get_samples_dict()
                 sample_name = data['sample']
                 if sample_name in samples:
-                    return jsonify(samples[sample_name]), 200
+                    # Return copy of sample data calibrated to chosen model
+                    selected_model = data.get("model", "Random Forest")
+                    res = json.loads(json.dumps(samples[sample_name]))
+                    if selected_model in res.get("model_scores", {}):
+                        prob = res["model_scores"][selected_model]
+                        res["threat_score"] = round(prob * 100, 1)
+                        res["verdict"] = "DANGEROUS / MALWARE" if prob > 0.5 else "SAFE / BENIGN"
+                    return jsonify(res), 200
                 else:
                     return jsonify({"error": "Sample not found"}), 404
 
@@ -134,10 +141,16 @@ def predict():
             prob = float(model.predict_proba(X_scaled)[0][1])
             model_scores[name] = round(prob, 6)
 
-        # Use best model (Random Forest) for verdict
-        best_prob = model_scores[BEST_MODEL_NAME]
-        threat_score = round(best_prob * 100, 1)
-        verdict = "DANGEROUS / MALWARE" if best_prob > 0.5 else "SAFE / BENIGN"
+        # Use selected model for verdict
+        selected_model = request.form.get("model", "Random Forest")
+        if request.is_json:
+            selected_model = data.get("model", selected_model)
+        if selected_model not in MODELS:
+            selected_model = "Random Forest"
+
+        chosen_prob = model_scores[selected_model]
+        threat_score = round(chosen_prob * 100, 1)
+        verdict = "DANGEROUS / MALWARE" if chosen_prob > 0.5 else "SAFE / BENIGN"
 
         # Build indicators from raw PE metadata
         indicators = _build_indicators(raw)

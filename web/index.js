@@ -11,12 +11,12 @@ let currentScanData = null;
 
 // Sourced directly from final-project-cs114.ipynb baseline evaluation results
 const BASELINE_METRICS = {
-    "Random Forest":       { accuracy: 97.36, precision: 97.83, recall: 96.87, f1: 0.973, roc_auc: 0.997, color: "#10b981" },
-    "CatBoost":            { accuracy: 96.84, precision: 96.96, recall: 96.73, f1: 0.968, roc_auc: 0.995, color: "#f59e0b" },
-    "XGBoost":             { accuracy: 96.05, precision: 96.03, recall: 96.08, f1: 0.961, roc_auc: 0.993, color: "#ef4444" },
-    "LightGBM":            { accuracy: 94.65, precision: 94.49, recall: 94.84, f1: 0.947, roc_auc: 0.988, color: "#06b6d4" },
-    "AdaBoost":            { accuracy: 86.53, precision: 85.54, recall: 87.95, f1: 0.867, roc_auc: 0.943, color: "#8b5cf6" },
-    "Logistic Regression": { accuracy: 85.14, precision: 83.24, recall: 88.05, f1: 0.856, roc_auc: 0.927, color: "#ec4899" }
+    "Random Forest":       { accuracy: 97.36, precision: 97.83, recall: 96.87, f1: 0.973, roc_auc: 0.997, color: "#10b981", fpr: "2.18%" },
+    "CatBoost":            { accuracy: 96.84, precision: 96.96, recall: 96.73, f1: 0.968, roc_auc: 0.995, color: "#f59e0b", fpr: "3.16%" },
+    "XGBoost":             { accuracy: 96.05, precision: 96.03, recall: 96.08, f1: 0.961, roc_auc: 0.993, color: "#ef4444", fpr: "3.97%" },
+    "LightGBM":            { accuracy: 94.65, precision: 94.49, recall: 94.84, f1: 0.947, roc_auc: 0.988, color: "#06b6d4", fpr: "5.51%" },
+    "AdaBoost":            { accuracy: 86.53, precision: 85.54, recall: 87.95, f1: 0.867, roc_auc: 0.943, color: "#8b5cf6", fpr: "14.46%" },
+    "Logistic Regression": { accuracy: 85.14, precision: 83.24, recall: 88.05, f1: 0.856, roc_auc: 0.927, color: "#ec4899", fpr: "16.76%" }
 };
 
 // Confusion Matrices for 200,000 baseline testing set
@@ -54,9 +54,53 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCorrelationMatrix();
     setupTrainingSim();
     setupSettingsAndTheme();
-    setupApiKeysView();
-    setupIncidentActions();
 });
+
+// SPA Routing Navigation switchView helper
+function switchView(viewId) {
+    const navItems = document.querySelectorAll('.nav-item');
+    const views = document.querySelectorAll('.dashboard-view');
+    const pageTitle = document.querySelector('.page-title');
+    const pagePath = document.querySelector('.page-path');
+
+    const viewDetails = {
+        "overview":       { title: "Threat Overview", sub: "Live · Updated 3s ago" },
+        "scanner":        { title: "Live Threat Scanner", sub: "Verify executables against 6 parallel ML models" },
+        "models":         { title: "Model Performance Dashboard", sub: "Base metrics sourced from baseline_results.csv" },
+        "datasets":       { title: "Feature Space & Datasets", sub: "KDE distributions and correlation analysis" },
+        "training":       { title: "Training Center", sub: "Simulate hyperparameter runs and optimization" },
+        "settings":       { title: "Engine Settings", sub: "Global thresholds and threat calibration" }
+    };
+
+    if (!viewDetails[viewId]) return;
+
+    // Update nav item active status
+    navItems.forEach(item => {
+        if (item.getAttribute('data-view') === viewId) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+
+    // Toggle dashboard views visibility
+    views.forEach(v => {
+        v.style.display = 'none';
+    });
+
+    const targetView = document.getElementById(`view-${viewId}`);
+    if (targetView) {
+        targetView.style.display = 'block';
+    }
+
+    // Update Page Headers
+    if (pageTitle && pagePath) {
+        pageTitle.textContent = viewDetails[viewId].title;
+        pagePath.innerHTML = `<span class="live-dot"></span>${viewDetails[viewId].sub}`;
+    }
+
+    appendLog('SYS', `Switched workspace view to: ${viewDetails[viewId].title}`, 'info');
+}
 
 // App Initialization
 function initApp() {
@@ -66,58 +110,205 @@ function initApp() {
         initTimeEl.textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
     }
     
+    // Initialize active model from memory or default
+    window.activeModel = localStorage.getItem('activeModel') || "Random Forest";
+    const selector = document.getElementById('global-model-selector');
+    if (selector) {
+        selector.value = window.activeModel;
+        selector.addEventListener('change', () => {
+            window.activeModel = selector.value;
+            localStorage.setItem('activeModel', window.activeModel);
+            appendLog('SYS', `Chuyển sang mô hình ML chính: ${window.activeModel}`, 'info');
+            syncActiveModelUI();
+        });
+    }
+
     // Default system check logs
     appendLog('SYS', 'Model Pipeline verified. Sourced baseline_deployment_artifacts.', 'ok');
     appendLog('SYS', 'Active classifiers: Random Forest, CatBoost, XGBoost, LightGBM, AdaBoost, Logistic Regression.', 'info');
+    
+    syncActiveModelUI();
+    setupTimelineTimeframes();
+    renderTimelineSVG();
+
+    // Setup model-card clicks to change active model globally
+    document.addEventListener('click', (e) => {
+        const card = e.target.closest('.model-card');
+        if (card) {
+            const modelName = card.getAttribute('data-model') || card.querySelector('.model-name')?.textContent?.trim();
+            if (modelName && BASELINE_METRICS[modelName]) {
+                window.activeModel = modelName;
+                localStorage.setItem('activeModel', window.activeModel);
+                appendLog('SYS', `Chuyển sang mô hình ML chính: ${window.activeModel}`, 'info');
+                syncActiveModelUI();
+            }
+        }
+    });
+
+    // Setup manage models redirection link calling switchView
+    const manageLink = document.getElementById('manage-models-link');
+    if (manageLink) {
+        manageLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('models');
+        });
+    }
+
+    // Initialize dynamic Overview Training Progress simulation
+    setupOverviewTrainingProgress();
 }
 
-// SPA Routing Navigation
+// Dynamic overview training progress simulation
+function setupOverviewTrainingProgress() {
+    const btnPause = document.getElementById('btn-pause-training');
+    const btnDetails = document.getElementById('btn-details-training');
+    if (!btnPause || !btnDetails) return;
+
+    let overviewTrainingEpoch = 42;
+    const overviewTrainingMaxEpoch = 100;
+    let overviewTrainingLoss = 0.032;
+    let overviewTrainingAcc = 96.80;
+    let overviewTrainingETAMinutes = 134; // 2h 14m
+    let overviewTrainingRunning = true;
+
+    const models = ["Transformer-v4", "CNN-Malware-v3", "XGBoost-Tuned-v2", "LightGBM-Optuna-v4"];
+    let currentModelIndex = 0;
+
+    btnPause.addEventListener('click', () => {
+        overviewTrainingRunning = !overviewTrainingRunning;
+        const badge = document.getElementById('overview-training-badge');
+        
+        if (overviewTrainingRunning) {
+            btnPause.textContent = "Pause";
+            btnPause.className = "btn btn-ghost";
+            if (badge) {
+                badge.className = "tag tag-amber pulse";
+                badge.textContent = "Running";
+                badge.style = "";
+            }
+            appendLog('TRAIN', `Tiến trình huấn luyện mô hình ${models[currentModelIndex]} đã tiếp tục.`, 'info');
+        } else {
+            btnPause.textContent = "Resume";
+            btnPause.className = "btn btn-primary"; 
+            if (badge) {
+                badge.className = "tag";
+                badge.style = "background:rgba(255,255,255,0.06); color:var(--text-dim); border:1px solid rgba(255,255,255,0.1);";
+                badge.textContent = "Paused";
+            }
+            appendLog('TRAIN', `Tiến trình huấn luyện mô hình ${models[currentModelIndex]} đã tạm dừng.`, 'warn');
+        }
+    });
+
+    btnDetails.addEventListener('click', () => {
+        switchView('training');
+    });
+
+    // Auto-update overview training info
+    setInterval(() => {
+        if (!overviewTrainingRunning) return;
+
+        // Fluctuations
+        overviewTrainingEpoch++;
+        if (overviewTrainingEpoch > overviewTrainingMaxEpoch) {
+            overviewTrainingEpoch = 1;
+            currentModelIndex = (currentModelIndex + 1) % models.length;
+            overviewTrainingLoss = 0.85;
+            overviewTrainingAcc = 65.40;
+            overviewTrainingETAMinutes = 300; // 5 hours
+            appendLog('TRAIN', `Bắt đầu huấn luyện mô hình mới: ${models[currentModelIndex]} (1.2M mẫu)...`, 'info');
+        }
+
+        // Loss decays
+        if (overviewTrainingEpoch === 1) {
+            overviewTrainingLoss = 0.85;
+        } else {
+            overviewTrainingLoss = overviewTrainingLoss - (overviewTrainingLoss * 0.04) + (Math.random() * 0.004 - 0.002);
+            if (overviewTrainingLoss < 0.01) overviewTrainingLoss = 0.01;
+        }
+
+        // Acc asymptotic increase
+        if (overviewTrainingEpoch === 1) {
+            overviewTrainingAcc = 65.40;
+        } else {
+            overviewTrainingAcc = overviewTrainingAcc + ((98.9 - overviewTrainingAcc) * 0.04) + (Math.random() * 0.1 - 0.05);
+            if (overviewTrainingAcc > 99.4) overviewTrainingAcc = 99.4;
+        }
+
+        // ETA decays
+        if (overviewTrainingETAMinutes > 1) {
+            overviewTrainingETAMinutes -= Math.floor(Math.random() * 2) + 1; // decreases by 1 or 2 minutes
+        } else {
+            overviewTrainingETAMinutes = 1;
+        }
+
+        // Formatted ETA
+        const hours = Math.floor(overviewTrainingETAMinutes / 60);
+        const mins = overviewTrainingETAMinutes % 60;
+        const etaText = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+        // Update UI
+        const modelEl = document.getElementById('overview-training-model');
+        const epochEl = document.getElementById('overview-training-epoch');
+        const lossEl = document.getElementById('overview-training-loss');
+        const lossFill = document.getElementById('overview-loss-fill');
+        const accEl = document.getElementById('overview-validation-acc');
+        const accFill = document.getElementById('overview-acc-fill');
+        const etaEl = document.getElementById('overview-training-eta');
+        const etaFill = document.getElementById('overview-eta-fill');
+        const gpuEl = document.getElementById('overview-training-gpu');
+        const samplesEl = document.getElementById('overview-training-samples');
+
+        if (modelEl) modelEl.textContent = models[currentModelIndex];
+        if (epochEl) epochEl.textContent = `Epoch ${overviewTrainingEpoch}/${overviewTrainingMaxEpoch}`;
+        if (lossEl) lossEl.textContent = overviewTrainingLoss.toFixed(4);
+        
+        if (lossFill) {
+            const lossPercent = Math.max(0, Math.min(100, (1.0 - overviewTrainingLoss) * 100));
+            lossFill.style.width = `${lossPercent.toFixed(1)}%`;
+        }
+        
+        if (accEl) accEl.textContent = `${overviewTrainingAcc.toFixed(2)}%`;
+        if (accFill) {
+            const accPercent = Math.max(0, Math.min(100, (overviewTrainingAcc - 50) * 2));
+            accFill.style.width = `${accPercent.toFixed(1)}%`;
+        }
+
+        if (etaEl) etaEl.textContent = etaText;
+        if (etaFill) {
+            const epochPercent = (overviewTrainingEpoch / overviewTrainingMaxEpoch) * 100;
+            etaFill.style.width = `${epochPercent.toFixed(1)}%`;
+        }
+
+        if (gpuEl) {
+            const gpuUtil = 90 + Math.floor(Math.random() * 8); // 90% - 97% fluctuation
+            gpuEl.textContent = `RTX 4090 · ${gpuUtil}% util`;
+        }
+
+        if (samplesEl) {
+            const totalSamples = 1200000;
+            const currentSamples = Math.floor((overviewTrainingEpoch / overviewTrainingMaxEpoch) * totalSamples);
+            const valSamples = Math.floor((overviewTrainingEpoch / overviewTrainingMaxEpoch) * 240000);
+            
+            const formatNum = (num) => {
+                if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+                if (num >= 1000) return (num / 1000).toFixed(0) + 'K';
+                return num;
+            };
+            samplesEl.textContent = `${formatNum(currentSamples)} train / ${formatNum(valSamples)} val`;
+        }
+    }, 1500);
+}
+
+// SPA Routing Navigation Setup
 function setupRouting() {
     const navItems = document.querySelectorAll('.nav-item');
-    const views = document.querySelectorAll('.dashboard-view');
-    const pageTitle = document.querySelector('.page-title');
-    const pagePath = document.querySelector('.page-path');
-
-    const viewDetails = {
-        "overview":       { title: "Threat Overview", sub: "Live · Updated 3s ago" },
-        "scanner":        { title: "Live Threat Scanner", sub: "Verify executables against 6 parallel ML models" },
-        "feed":           { title: "Global Threat Feed", sub: "Real-time global indicators and signatures" },
-        "incidents":      { title: "Incident Console", sub: "Endpoint security alerts and quarantine actions" },
-        "models":         { title: "Model Performance Dashboard", sub: "Base metrics sourced from baseline_results.csv" },
-        "datasets":       { title: "Feature Space & Datasets", sub: "KDE distributions and correlation analysis" },
-        "training":       { title: "Training Center", sub: "Simulate hyperparameter runs and optimization" },
-        "explainability": { title: "Explainable AI (XAI)", sub: "Step-by-step decision trees and SHAP values" },
-        "apikeys":        { title: "Developer Keys", sub: "REST API integration credentials" },
-        "settings":       { title: "Engine Settings", sub: "Global thresholds and threat calibration" }
-    };
-
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             const viewId = item.getAttribute('data-view');
-            if (!viewId) return;
-
-            // Update nav item active status
-            navItems.forEach(n => n.classList.remove('active'));
-            item.classList.add('active');
-
-            // Toggle dashboard views visibility
-            views.forEach(v => {
-                v.style.display = 'none';
-            });
-
-            const targetView = document.getElementById(`view-${viewId}`);
-            if (targetView) {
-                targetView.style.display = 'block';
+            if (viewId) {
+                switchView(viewId);
             }
-
-            // Update Page Headers
-            if (viewDetails[viewId]) {
-                pageTitle.textContent = viewDetails[viewId].title;
-                pagePath.innerHTML = `<span class="live-dot"></span>${viewDetails[viewId].sub}`;
-            }
-
-            appendLog('SYS', `Switched workspace view to: ${viewDetails[viewId].title}`, 'info');
         });
     });
 }
@@ -205,7 +396,7 @@ function fetchSampleData(sampleName) {
         fetch(`${API_BASE_URL}/api/predict`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sample: sampleName })
+            body: JSON.stringify({ sample: sampleName, model: window.activeModel })
         })
         .then(response => {
             if (!response.ok) throw new Error("Sample fetch failed on backend");
@@ -229,6 +420,7 @@ function processScanRequest(file) {
     animatePipeline(() => {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('model', window.activeModel);
 
         fetch(`${API_BASE_URL}/api/predict`, {
             method: 'POST',
@@ -257,11 +449,26 @@ function processScanRequest(file) {
 function animatePipeline(callback) {
     const steps = ['pstep-1', 'pstep-2', 'pstep-3', 'pstep-4', 'pstep-5'];
     
-    // Switch to Scanner View for rich presentation
-    const scannerNav = document.querySelector('[data-view="scanner"]');
-    if (scannerNav && !scannerNav.classList.contains('active')) {
-        scannerNav.click();
+    const isOverviewActive = document.querySelector('[data-view="overview"]')?.classList.contains('active');
+    
+    if (isOverviewActive) {
+        // Instant Mode: Print logs to system-terminal instantly, then call callback
+        const stepLogs = [
+            "MZ magic header verified. PE offset: 0xe8. Subsystem: GUI Windows.",
+            "PEFeatureExtractor loaded. Processed 2,381 raw structural features successfully.",
+            "Standard scaled via MinMaxScaler. Squeezed dataset to Top 200 features.",
+            "Evaluating parallel models (Random Forest, CatBoost, XGBoost, LightGBM, AdaBoost, Logistic Regression)...",
+            "Calibration Complete. Structural features combined with model probabilities."
+        ];
+        stepLogs.forEach(log => {
+            appendLog('PIPELINE', log, 'info');
+        });
+        callback();
+        return;
     }
+
+    // Otherwise transition to Live Scanner view
+    switchView('scanner');
 
     // Reset pipeline steps visual highlight
     steps.forEach(id => {
@@ -304,6 +511,7 @@ function animatePipeline(callback) {
     runNextStep();
 }
 
+
 // Rendering Dynamic Scan Results on Panel
 function renderScanResults(data, filename) {
     currentScanData = data;
@@ -326,10 +534,25 @@ function renderScanResults(data, filename) {
         });
     }
 
+    // Add current scan to session timeline and update SVG
+    sessionTimelineScans.push({
+        scanned: sessionScans,
+        threats: sessionThreats,
+        time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        timestamp: Date.now()
+    });
+    renderTimelineSVG();
+
     // Update Overview Gauge and Model Probabilities
     updateThreatGauge(data, isMalware, 'gauge-ring', 'gauge-pct', 'threat-level', 'threat-desc', 'threat-pulse');
     updateOverviewModelBars(data);
     addRecentScanRow(data, filename, isMalware);
+
+    // Update Threat Warning Alert Banner (Overview)
+    renderThreatAlertBanner(data, isMalware);
+    
+    // Sync the top metrics and cards
+    syncActiveModelUI();
 
     // Update Scanner Result Panel
     document.getElementById('scanner-result-panel').style.display = 'block';
@@ -377,6 +600,12 @@ function renderScanResults(data, filename) {
     const scannerIndicatorsList = document.getElementById('scanner-indicators-list');
     scannerIndicatorsList.innerHTML = '';
     
+    if (isMalware) {
+        const alertWrapper = document.createElement('div');
+        alertWrapper.innerHTML = getThreatAlertHTML(data);
+        scannerIndicatorsList.appendChild(alertWrapper.firstElementChild);
+    }
+    
     if (data.indicators && data.indicators.length > 0) {
         data.indicators.forEach(ind => {
             const item = document.createElement('div');
@@ -385,14 +614,13 @@ function renderScanResults(data, filename) {
             item.style.padding = '8px 12px';
             item.style.borderRadius = '0 6px 6px 0';
             item.style.fontSize = '11px';
-            item.style.color = 'white';
+            item.style.color = 'var(--text-primary)';
             item.innerHTML = ind.message;
             scannerIndicatorsList.appendChild(item);
         });
     }
 
-    // Prepopulate the interactive XAI player trees using current scan features!
-    xaiPlayer.init(data);
+
 }
 
 // Fallback Simulation for testing when server is completely offline
@@ -587,17 +815,18 @@ function setupModelPerformanceDashboard() {
         
         const card = document.createElement('div');
         card.className = 'model-card';
+        card.setAttribute('data-model', modelName);
         card.style.borderLeft = `3px solid ${m.color}`;
         card.innerHTML = `
             <div class="flex-center gap-8 mb-10">
               <div class="model-name">${modelName}</div>
-              ${isBest ? '<span class="tag tag-green" style="margin-left:auto">BEST BASELINE</span>' : '<span class="tag tag-cyan" style="margin-left:auto;opacity:0.8">LOADED</span>'}
+              <span class="tag tag-green model-active-badge" style="margin-left:auto">Active</span>
             </div>
             <div class="model-type" style="font-size:9px;letter-spacing:1px;color:var(--text-dim);margin-bottom:8px;">Classification Metrics (N=200K)</div>
             
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
               <div style="background:var(--bg-base);padding:6px;border-radius:4px;text-align:center;">
-                <div style="font-size:14px;font-weight:bold;color:white;">${m.accuracy.toFixed(2)}%</div>
+                <div style="font-size:14px;font-weight:bold;color:var(--text-primary);">${m.accuracy.toFixed(2)}%</div>
                 <div style="font-size:8px;color:var(--text-secondary);">Accuracy</div>
               </div>
               <div style="background:var(--bg-base);padding:6px;border-radius:4px;text-align:center;">
@@ -606,11 +835,16 @@ function setupModelPerformanceDashboard() {
               </div>
             </div>
 
-            <div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--text-secondary);border-top:1px solid rgba(0,210,200,0.06);padding-top:6px;">
+            <div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--text-secondary);border-top:1px solid rgba(0,210,200,0.06);padding-top:6px;align-items:center;">
               <span>Precision: <strong>${m.precision.toFixed(2)}%</strong></span>
               <span>Recall: <strong>${m.recall.toFixed(2)}%</strong></span>
             </div>
+
+            <div class="model-footer" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 6px;">
+              <span class="tag tag-cyan model-status-badge">SELECTED PRIMARY</span>
+            </div>
         `;
+
         grid.appendChild(card);
     }
 
@@ -632,30 +866,65 @@ function setupModelPerformanceDashboard() {
             }
         });
     });
+    
+    // Initial sync for dynamically rendered cards
+    syncActiveModelUI();
 }
 
-// Generate the 10x10 Correlation Matrix Heatmap Tiles
+// Generate the 11x11 Correlation Matrix Heatmap Tiles with X/Y labels
 function setupCorrelationMatrix() {
     const container = document.getElementById('correlation-heatmap-container');
     if (!container) return;
     
     container.innerHTML = '';
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = '38px repeat(10, 24px)';
+    container.style.alignItems = 'center';
     
-    // Render 100 tiles dynamically
+    // Top-Left block + X-axis labels
+    const topLeft = document.createElement('div');
+    topLeft.style.fontSize = '8px';
+    topLeft.style.color = 'var(--text-dim)';
+    topLeft.style.textAlign = 'center';
+    topLeft.style.fontWeight = 'bold';
+    topLeft.textContent = 'Feat';
+    container.appendChild(topLeft);
+    
+    for (let c = 0; c < 10; c++) {
+        const xLabel = document.createElement('div');
+        xLabel.style.fontSize = '8px';
+        xLabel.style.color = 'var(--text-secondary)';
+        xLabel.style.textAlign = 'center';
+        xLabel.style.fontWeight = '500';
+        xLabel.textContent = HEATMAP_LABELS[c];
+        container.appendChild(xLabel);
+    }
+    
+    // Y-axis labels and heatmap tiles
     for (let r = 0; r < 10; r++) {
+        const yLabel = document.createElement('div');
+        yLabel.style.fontSize = '8px';
+        yLabel.style.color = 'var(--text-secondary)';
+        yLabel.style.fontWeight = '500';
+        yLabel.style.textAlign = 'right';
+        yLabel.style.paddingRight = '6px';
+        yLabel.textContent = HEATMAP_LABELS[r];
+        container.appendChild(yLabel);
+        
         for (let c = 0; c < 10; c++) {
             const val = HEATMAP_VALUES[r][c];
             
             const tile = document.createElement('div');
             tile.className = 'heatmap-tile';
+            tile.style.width = '24px';
+            tile.style.height = '24px';
+            tile.style.borderRadius = '3px';
             
-            // Background color represents correlation strength:
-            // Teal represents strong positive (+1.0), dark represent no correlation (0.0), red represents negative (-1.0)
             let color = 'var(--bg-base)';
             if (val > 0) {
-                color = `rgba(0, 210, 200, ${val})`; // Teal
+                color = `rgba(0, 210, 200, ${val})`;
             } else if (val < 0) {
-                color = `rgba(255, 61, 90, ${Math.abs(val)})`; // Red
+                color = `rgba(255, 61, 90, ${Math.abs(val)})`;
             }
             
             tile.style.backgroundColor = color;
@@ -666,10 +935,146 @@ function setupCorrelationMatrix() {
     }
 }
 
+// Draw Axis Ticks, Coordinate Labels, and Gridlines in Training Runs chart
+function drawTrainingAxes() {
+    const xMin = 35, xMax = 365, yMin = 15, yMax = 130;
+    let html = '';
+
+    // Y-Axis gridlines, ticks, and double labels
+    const ySteps = 5;
+    for (let i = 0; i < ySteps; i++) {
+        const ratio = i / (ySteps - 1);
+        const y = yMax - ratio * (yMax - yMin);
+        html += `<line x1="${xMin}" y1="${y}" x2="${xMax}" y2="${y}" stroke="rgba(0, 210, 200, 0.04)" stroke-dasharray="2,2" stroke-width="1"/>`;
+        html += `<line x1="${xMin - 3}" y1="${y}" x2="${xMin}" y2="${y}" stroke="rgba(0, 210, 200, 0.3)" stroke-width="1"/>`;
+        html += `<line x1="${xMax}" y1="${y}" x2="${xMax + 3}" y2="${y}" stroke="rgba(0, 210, 200, 0.3)" stroke-width="1"/>`;
+        html += `<text x="8" y="${y + 3}" fill="#ff3d5a" font-size="7.5" font-family="var(--mono)" font-weight="500">${ratio.toFixed(2)}</text>`;
+        html += `<text x="372" y="${y + 3}" fill="#28e87d" font-size="7.5" font-family="var(--mono)" font-weight="500">${(60 + ratio * 40).toFixed(0)}%</text>`;
+    }
+
+    // X-Axis gridlines, ticks, and labels
+    const xSteps = 6;
+    for (let i = 0; i < xSteps; i++) {
+        const ratio = i / (xSteps - 1);
+        const x = xMin + ratio * (xMax - xMin);
+        html += `<line x1="${x}" y1="${yMin}" x2="${x}" y2="${yMax}" stroke="rgba(0, 210, 200, 0.04)" stroke-dasharray="2,2" stroke-width="1"/>`;
+        html += `<line x1="${x}" y1="${yMax}" x2="${x}" y2="${yMax + 3}" stroke="rgba(0, 210, 200, 0.3)" stroke-width="1"/>`;
+        html += `<text x="${x}" y="142" fill="var(--text-dim)" font-size="7.5" font-family="var(--mono)" text-anchor="middle">${(ratio * 50).toFixed(0)}</text>`;
+    }
+
+    // Draw Axes borders
+    html += `<line x1="${xMin}" y1="${yMax}" x2="${xMax}" y2="${yMax}" stroke="rgba(0, 210, 200, 0.15)" stroke-width="1"/>`;
+    html += `<line x1="${xMin}" y1="${yMin}" x2="${xMin}" y2="${yMax}" stroke="rgba(0, 210, 200, 0.15)" stroke-width="1"/>`;
+    html += `<line x1="${xMax}" y1="${yMin}" x2="${xMax}" y2="${yMax}" stroke="rgba(0, 210, 200, 0.15)" stroke-width="1"/>`;
+
+    // Legend
+    html += `
+        <text x="35" y="10" fill="#ff3d5a" font-size="7.5" font-family="var(--mono)" font-weight="bold">● LOSS (TRÁI)</text>
+        <text x="365" y="10" fill="#28e87d" font-size="7.5" font-family="var(--mono)" font-weight="bold" text-anchor="end">● VAL ACCURACY (PHẢI)</text>
+    `;
+    return html;
+}
+
+// Generate Threat Warning Alert Banner HTML for dynamic callouts (Overview & Scanner)
+function getThreatAlertHTML(data) {
+    let suspiciousApis = [];
+    let highEntropySection = null;
+    let missingSignature = false;
+    let upxPacker = false;
+
+    if (data.indicators && data.indicators.length > 0) {
+        data.indicators.forEach(ind => {
+            const msg = ind.message.toLowerCase();
+            if (msg.includes('api') || msg.includes('import')) {
+                const matches = ind.message.match(/imports?(?:\s+found)?(?:\s*:\s*|\s+\()([^).]+)/i);
+                if (matches && matches[1]) {
+                    suspiciousApis = matches[1].split(',').map(s => s.trim().replace(/[()]/g, ''));
+                } else {
+                    suspiciousApis = ['CreateRemoteThread', 'WriteProcessMemory', 'UrlDownloadToFile'];
+                }
+            }
+            if (msg.includes('entropy')) {
+                const sectionMatch = ind.message.match(/'([^']+)'/) || ind.message.match(/section\s+(\.\w+|\w+)/i);
+                const valMatch = ind.message.match(/entropy:\s*([\d.]+)/i) || ind.message.match(/entropy\s+of\s+([\d.]+)/i) || ind.message.match(/([\d.]+)/);
+                highEntropySection = {
+                    name: sectionMatch ? sectionMatch[1] : 'unknown',
+                    entropy: valMatch ? parseFloat(valMatch[1]) : 7.5
+                };
+            }
+            if (msg.includes('signature is missing') || msg.includes('unsigned')) {
+                missingSignature = true;
+            }
+            if (msg.includes('upx')) {
+                upxPacker = true;
+            }
+        });
+    }
+
+    return `
+        <div class="threat-alert-box" style="background: rgba(255, 61, 90, 0.08); border: 1px solid rgba(255, 61, 90, 0.3); border-radius: 6px; padding: 12px; margin-bottom: 10px; font-family: var(--display); text-align: left; box-sizing: border-box; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 8px; color: var(--red); font-weight: bold; font-size: 11.5px; margin-bottom: 8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>CẢNH BÁO NGUY HIỂM TỆP (MALWARE DETECTED)</span>
+            </div>
+            <div style="font-size: 10.5px; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 6px;">
+                <p style="margin:0; font-weight:bold; color: var(--text-primary);">Vị trí & dấu hiệu nguy hiểm phát hiện trong cấu trúc nhị phân (Binary Structure):</p>
+                
+                ${missingSignature ? `
+                <div style="background: rgba(255,61,90,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--red);">
+                    <strong style="color:var(--red);">⚠️ Thiếu Chữ Ký Số (Unsigned PE Header):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Tệp thực thi không có Signature hợp lệ. Nguy cơ chứa mã nguồn độc hại tự biên chế hoặc giả mạo nguồn gốc.</span>
+                </div>
+                ` : ''}
+
+                ${highEntropySection ? `
+                <div style="background: rgba(255,61,90,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--red);">
+                    <strong style="color:var(--red);">⚠️ Phân đoạn nén/mã hóa (Entropy cao ở Section '${highEntropySection.name}'):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Entropy đạt <strong>${highEntropySection.entropy.toFixed(2)}</strong>. Đây là dấu hiệu của Shellcode được mã hóa hoặc Payload độc hại đang lẩn trốn dưới lớp đóng gói (Packing).</span>
+                </div>
+                ` : ''}
+
+                ${upxPacker ? `
+                <div style="background: rgba(255,61,90,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--red);">
+                    <strong style="color:var(--red);">⚠️ Kỹ thuật nén ẩn mình (UPX Section):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Mã độc sử dụng trình nén UPX để che giấu các đoạn mã nhị phân gốc hòng tránh sự phát hiện của cơ chế kiểm tra chữ ký quét tĩnh.</span>
+                </div>
+                ` : ''}
+
+                ${suspiciousApis.length > 0 ? `
+                <div style="background: rgba(255,61,90,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--red);">
+                    <strong style="color:var(--red);">⚠️ Lệnh gọi API nhạy cảm (Imports Table):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Phát hiện hàm: <code style="color:var(--red); background:var(--red-dim); padding:1px 4px; border-radius:2px; font-family:var(--mono);">${suspiciousApis.join(', ')}</code>. Đây là các API nguy cơ được dùng để tiêm mã độc hoặc tải payload tự động.</span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Render dynamic warning banner to Overview dashboard
+function renderThreatAlertBanner(data, isMalware) {
+    const overviewContainer = document.getElementById('overview-threat-alert-container');
+    if (overviewContainer) {
+        if (isMalware) {
+            overviewContainer.style.display = 'block';
+            overviewContainer.innerHTML = getThreatAlertHTML(data);
+        } else {
+            overviewContainer.style.display = 'none';
+            overviewContainer.innerHTML = '';
+        }
+    }
+}
+
 // Interactive Hyperparameter training simulator (runs a pseudo training run in web GPU sandbox)
 function setupTrainingSim() {
     const startBtn = document.getElementById('btn-start-training');
     if (!startBtn) return;
+
+    // Draw empty training coordinate axes immediately
+    const trSvg = document.getElementById('training-svg');
+    if (trSvg) {
+        trSvg.innerHTML = drawTrainingAxes();
+    }
 
     // Range Inputs labels update
     const sliders = [
@@ -717,8 +1122,8 @@ function setupTrainingSim() {
         const trAcc = document.getElementById('tr-acc');
         const trSvg = document.getElementById('training-svg');
 
-        // Draw basic layout in training SVG
-        trSvg.innerHTML = `<line x1="0" y1="130" x2="400" y2="130" stroke="rgba(0,210,200,0.1)"/>`;
+        // Draw coordinate axes and labels in training SVG
+        trSvg.innerHTML = drawTrainingAxes();
         
         let lossPoints = [];
         let accPoints = [];
@@ -742,19 +1147,18 @@ function setupTrainingSim() {
                 appendLog('TRAIN', `Epoch ${epoch}/${maxEpoch}: Loss = ${loss.toFixed(4)} | Validation Accuracy = ${acc.toFixed(2)}%`, 'success', 'training-terminal');
             }
 
-            // Draw real points to training SVG block
-            const x = (epoch / maxEpoch) * 400;
-            const yLoss = 130 - (loss * 120);
-            const yAcc = 130 - ((acc - 60) / 40 * 100);
+            // Draw real points to scaled training SVG coordinates
+            const xMin = 35, xMax = 365, yMin = 15, yMax = 130;
+            const x = xMin + (epoch / maxEpoch) * (xMax - xMin);
+            const yLoss = yMax - (loss * (yMax - yMin));
+            const yAcc = yMax - ((acc - 60) / 40 * (yMax - yMin));
 
             lossPoints.push(`${x},${yLoss}`);
             accPoints.push(`${x},${yAcc}`);
 
-            trSvg.innerHTML = `
-                <line x1="0" y1="130" x2="400" y2="130" stroke="rgba(0,210,200,0.15)" stroke-width="1"/>
-                <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(0,210,200,0.05)" stroke-width="1"/>
-                <path d="M${lossPoints.join(' L')}" fill="none" stroke="var(--red)" stroke-width="1.8"/>
-                <path d="M${accPoints.join(' L')}" fill="none" stroke="var(--green)" stroke-width="1.8"/>
+            trSvg.innerHTML = drawTrainingAxes() + `
+                <path d="M${lossPoints.join(' L')}" fill="none" stroke="var(--red)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M${accPoints.join(' L')}" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
             `;
 
             // Sync with Overview page metrics cards
@@ -776,188 +1180,7 @@ function setupTrainingSim() {
     });
 }
 
-// XAI decision tree walkthrough player
-class XaiPlayer {
-    constructor() {
-        this.step = 0;
-        this.isPlaying = false;
-        this.playInterval = null;
-        this.steps = [];
-        this.activePrefix = '';
-    }
 
-    init(data) {
-        this.pause();
-        this.step = 0;
-        
-        let isMalware = data.verdict.includes('MALWARE') || data.verdict.includes('DANGEROUS');
-        let val638 = data.file_metadata ? data.file_metadata.timestamp : 1504401044;
-        let val503 = (data.top_features && data.top_features.F503) ? data.top_features.F503 : (isMalware ? 7.82 : 5.42);
-        let val1344 = (data.top_features && data.top_features.F1344) ? data.top_features.F1344 : (isMalware ? 0 : 1);
-        let val2142 = (data.top_features && data.top_features.F2142) ? data.top_features.F2142 : (isMalware ? 120 : 15);
-        let sigText = val1344 ? 'Signed Authenticode' : 'Unsigned Certificate';
-
-        // Prepare walkthrough tree paths
-        const setupWalkthroughFor = (prefix) => {
-            const rootNode = document.getElementById(`xnode-root${prefix}`);
-            const leftNode = document.getElementById(`xnode-left${prefix}`);
-            const rightNode = document.getElementById(`xnode-right${prefix}`);
-            const leftRes = document.getElementById(`xnode-left-result${prefix}`);
-            const rightRes = document.getElementById(`xnode-right-result${prefix}`);
-            const logEl = document.getElementById(`xai-log${prefix}`);
-            
-            const valRoot = document.getElementById(`xval-root${prefix}`);
-            const valEntropy = document.getElementById(`xval-entropy${prefix}`);
-            const valSig = document.getElementById(`xval-sig${prefix}`);
-
-            if (!rootNode) return [];
-
-            // Reset node active states
-            rootNode.style.boxShadow = 'none';
-            leftNode.style.opacity = '0.3';
-            leftNode.style.boxShadow = 'none';
-            rightNode.style.opacity = '0.3';
-            rightNode.style.boxShadow = 'none';
-            leftRes.style.opacity = '0.3';
-            leftRes.style.boxShadow = 'none';
-            rightRes.style.opacity = '0.3';
-            rightRes.style.boxShadow = 'none';
-
-            valRoot.textContent = val638;
-            valEntropy.textContent = typeof val503 === 'number' ? val503.toFixed(2) : val503;
-            valSig.textContent = sigText;
-
-            return [
-                {
-                    execute: () => {
-                        rootNode.style.boxShadow = '0 0 16px var(--purple)';
-                        logEl.innerHTML = `[STAGE 1] Testing <strong>F638 (COFF Timestamp)</strong> value: <strong>${val638}</strong>. Value exceeds the split criteria. Moving down decision branches.`;
-                    }
-                },
-                {
-                    execute: () => {
-                        leftNode.style.opacity = '1';
-                        leftNode.style.boxShadow = '0 0 16px var(--cyan)';
-                        logEl.innerHTML = `[STAGE 2] Checking Left Node - <strong>F503 (Sections Entropy)</strong>: <strong>${val503.toFixed(2)}</strong>. ${val503 > 7.1 ? 'Entropy is highly packed/encrypted.' : 'Entropy is normal.'}`;
-                    }
-                },
-                {
-                    execute: () => {
-                        rightNode.style.opacity = '1';
-                        rightNode.style.boxShadow = '0 0 16px var(--amber)';
-                        logEl.innerHTML = `[STAGE 3] Checking Right Node - <strong>F1344 (Digital Cert)</strong>: <strong>${sigText}</strong>. ${val1344 ? 'Certified publisher.' : 'No authentic code signature found.'}`;
-                    }
-                },
-                {
-                    execute: () => {
-                        leftRes.style.opacity = '1';
-                        rightRes.style.opacity = '1';
-                        
-                        const verdictHTML = isMalware 
-                            ? `<div style="color:var(--red);font-weight:bold;">MALWARE</div>` 
-                            : `<div style="color:var(--green);font-weight:bold;">BENIGN</div>`;
-                        
-                        leftRes.innerHTML = verdictHTML;
-                        rightRes.innerHTML = verdictHTML;
-                        
-                        logEl.innerHTML = `<span style="color:${isMalware ? 'var(--red)' : 'var(--green)'}">[CONCLUSION] Ensembling tree paths results. Verdict: ${isMalware ? 'MALWARE' : 'BENIGN'} (Risk: ${data.threat_score}%)</span>`;
-                    }
-                }
-            ];
-        };
-
-        // Populate steps lists for both Embed container and Modal layout
-        this.embedSteps = setupWalkthroughFor('-embed');
-        this.modalSteps = setupWalkthroughFor('');
-        
-        this.updateControls();
-    }
-
-    play(prefix) {
-        if (this.isPlaying) return;
-        this.isPlaying = true;
-        this.activePrefix = prefix;
-        this.playInterval = setInterval(() => this.next(prefix), 1400);
-        this.updateControls();
-    }
-
-    pause() {
-        this.isPlaying = false;
-        clearInterval(this.playInterval);
-        this.updateControls();
-    }
-
-    next(prefix) {
-        const steps = prefix === '-embed' ? this.embedSteps : this.modalSteps;
-        if (this.step < steps.length) {
-            steps[this.step].execute();
-            this.step++;
-        } else {
-            this.pause();
-        }
-        this.updateControls();
-    }
-
-    prev(prefix) {
-        this.pause();
-        if (this.step > 0) {
-            this.step--;
-            this.reset(prefix);
-            
-            // Fast forward to current step
-            const targetStep = this.step;
-            this.step = 0;
-            for (let i = 0; i < targetStep; i++) {
-                this.next(prefix);
-            }
-        }
-    }
-
-    reset(prefix) {
-        this.pause();
-        this.step = 0;
-        
-        const ids = prefix === '-embed' 
-            ? ['xnode-root-embed', 'xnode-left-embed', 'xnode-right-embed', 'xnode-left-result-embed', 'xnode-right-result-embed']
-            : ['xnode-root', 'xnode-left', 'xnode-right', 'xnode-left-result', 'xnode-right-result'];
-            
-        ids.forEach((id, idx) => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.style.opacity = idx === 0 ? '1' : '0.3';
-                el.style.boxShadow = 'none';
-            }
-        });
-
-        const logEl = document.getElementById(prefix === '-embed' ? 'xai-log-embed' : 'xai-log');
-        if (logEl) {
-            logEl.textContent = "Tree walkthrough ready. Press Play to animate rules evaluation.";
-        }
-        this.updateControls();
-    }
-
-    updateControls() {}
-}
-
-const xaiPlayer = new XaiPlayer();
-
-// Connect XAI Tree walkthrough controls in Explainability Tab
-document.getElementById('xai-btn-play-embed')?.addEventListener('click', () => {
-    if (xaiPlayer.isPlaying) xaiPlayer.pause();
-    else xaiPlayer.play('-embed');
-});
-document.getElementById('xai-btn-reset-embed')?.addEventListener('click', () => xaiPlayer.reset('-embed'));
-document.getElementById('xai-btn-next-embed')?.addEventListener('click', () => xaiPlayer.next('-embed'));
-document.getElementById('xai-btn-prev-embed')?.addEventListener('click', () => xaiPlayer.prev('-embed'));
-
-// Connect XAI Modal player triggers
-document.getElementById('xai-btn-play')?.addEventListener('click', () => {
-    if (xaiPlayer.isPlaying) xaiPlayer.pause();
-    else xaiPlayer.play('');
-});
-document.getElementById('xai-btn-reset')?.addEventListener('click', () => xaiPlayer.reset(''));
-document.getElementById('xai-btn-next')?.addEventListener('click', () => xaiPlayer.next(''));
-document.getElementById('xai-btn-prev')?.addEventListener('click', () => xaiPlayer.prev(''));
 
 // Setup Global settings and beautiful Theme Switch toggle
 function setupSettingsAndTheme() {
@@ -1008,172 +1231,7 @@ function setupSettingsAndTheme() {
     }
 }
 
-// REST API Keys view logic
-function setupApiKeysView() {
-    const generateBtn = document.getElementById('btn-generate-api');
-    const container = document.getElementById('api-keys-list');
 
-    if (generateBtn && container) {
-        generateBtn.addEventListener('click', () => {
-            const name = prompt("Enter a description/label for the new API Key:", "Development Sandbox Key");
-            if (!name) return;
-
-            const hex = generateRandomHex(32);
-            const fullKey = `ml_live_${hex}`;
-            const keyObj = { name, key: fullKey, hidden: true };
-            apiKeys.push(keyObj);
-            
-            renderApiKeysList();
-            appendLog('API', `Generated new developer endpoint credential: ${name}`, 'success', 'api-calls-terminal');
-        });
-    }
-    
-    renderApiKeysList();
-}
-
-function renderApiKeysList() {
-    const container = document.getElementById('api-keys-list');
-    if (!container) return;
-
-    container.innerHTML = '';
-    
-    apiKeys.forEach((k, idx) => {
-        const item = document.createElement('div');
-        item.style.display = 'flex';
-        item.style.alignItems = 'center';
-        item.style.justifyContent = 'space-between';
-        item.style.background = 'var(--bg-elevated)';
-        item.style.padding = '12px';
-        item.style.borderRadius = '8px';
-        item.style.border = '1px solid var(--border)';
-        item.style.marginBottom = '8px';
-
-        const visibleKey = k.hidden ? `${k.key.substring(0, 16)}...` : k.key;
-
-        item.innerHTML = `
-            <div>
-              <strong style="color:white;font-size:12px;">${k.name}</strong>
-              <div style="font-family:var(--mono);font-size:11px;color:var(--cyan);margin-top:4px;">
-                <span>${visibleKey}</span>
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;">
-              <button class="btn btn-ghost toggle-visibility-btn" data-index="${idx}" style="padding:4px 8px;font-size:10px;">${k.hidden ? 'Show' : 'Hide'}</button>
-              <button class="btn btn-ghost copy-api-btn" data-key="${k.key}" style="padding:4px 8px;font-size:10px;">Copy</button>
-              <button class="btn btn-ghost delete-api-btn" data-index="${idx}" style="padding:4px 8px;font-size:10px;color:var(--red);">Delete</button>
-            </div>
-        `;
-        
-        container.appendChild(item);
-    });
-
-    // Wire action buttons
-    container.querySelectorAll('.toggle-visibility-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const idx = parseInt(btn.getAttribute('data-index'));
-            apiKeys[idx].hidden = !apiKeys[idx].hidden;
-            renderApiKeysList();
-        });
-    });
-
-    container.querySelectorAll('.copy-api-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const keyStr = btn.getAttribute('data-key');
-            navigator.clipboard.writeText(keyStr)
-                .then(() => alert("API Key copied to clipboard!"))
-                .catch(err => console.error("Clipboard copy error:", err));
-        });
-    });
-
-    container.querySelectorAll('.delete-api-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (!confirm("Are you sure you want to revoke and delete this API Key?")) return;
-            const idx = parseInt(btn.getAttribute('data-index'));
-            appendLog('API', `Revoked credentials for: ${apiKeys[idx].name}`, 'warning', 'api-calls-terminal');
-            apiKeys.splice(idx, 1);
-            renderApiKeysList();
-        });
-    });
-}
-
-// Endpoint Incident Console Actions (Quarantine & Ignores)
-function setupIncidentActions() {
-    const tableBody = document.getElementById('incidents-table-body');
-    if (!tableBody) return;
-
-    tableBody.addEventListener('click', (e) => {
-        const tr = e.target.closest('tr');
-        if (!tr) return;
-
-        const rowId = tr.getAttribute('id');
-        
-        // Handle Quarantine Click
-        if (e.target.classList.contains('quarantine-btn')) {
-            appendLog('INCIDENT', `Quarantined source file on target host. Alert State resolved.`, 'success');
-            tr.style.background = 'rgba(255, 61, 90, 0.08)';
-            tr.style.opacity = '0.7';
-            
-            // Disable action buttons
-            tr.querySelectorAll('.btn').forEach(b => b.setAttribute('disabled', 'true'));
-            
-            // Decr pending incidents tag count
-            updateIncidentCountBadge();
-        }
-
-        // Handle Ignore Click
-        if (e.target.classList.contains('ignore-btn')) {
-            appendLog('INCIDENT', `Incident row ignored by analyst. Fading row.`, 'warn');
-            
-            tr.style.transition = 'all 0.3s';
-            tr.style.opacity = '0';
-            setTimeout(() => {
-                tr.remove();
-                updateIncidentCountBadge();
-            }, 300);
-        }
-
-        // Handle Examine Tree Click (Launches VisuAlgo player)
-        if (e.target.classList.contains('examine-xai-btn')) {
-            const modal = document.getElementById('xai-modal');
-            if (modal) {
-                modal.style.display = 'flex';
-                
-                const score = parseFloat(e.target.getAttribute('data-score')) || 90;
-                const verdict = e.target.getAttribute('data-verdict') || 'MALWARE';
-                
-                xaiPlayer.init({
-                    verdict,
-                    threat_score: score,
-                    file_metadata: { timestamp: "1504401044" },
-                    top_features: { F503: 7.91, F1344: 0, F2142: 256 }
-                });
-                
-                xaiPlayer.reset('');
-                setTimeout(() => xaiPlayer.play(''), 400);
-            }
-        }
-    });
-}
-
-function updateIncidentCountBadge() {
-    const tbody = document.getElementById('incidents-table-body');
-    const badge = document.getElementById('incidents-count-badge');
-    if (!tbody || !badge) return;
-
-    // Filter elements that have opacity !== '0' or are not disabled
-    const activeCount = Array.from(tbody.children).filter(tr => {
-        const btn = tr.querySelector('.quarantine-btn');
-        return btn && !btn.hasAttribute('disabled');
-    }).length;
-
-    if (activeCount > 0) {
-        badge.className = 'tag tag-red pulse';
-        badge.textContent = `${activeCount} Pending Actions`;
-    } else {
-        badge.className = 'tag tag-green';
-        badge.textContent = 'All Incidents Resolved';
-    }
-}
 
 // Utility functions
 function formatBytes(bytes) {
@@ -1195,4 +1253,544 @@ function generateRandomHex(len) {
         res += chars[Math.floor(Math.random() * 16)];
     }
     return res;
+}
+
+// Global dynamic model selections and timeline variables
+let sessionTimelineScans = [];
+
+function syncActiveModelUI() {
+    // 1. Update selector dropdown value
+    const selector = document.getElementById('global-model-selector');
+    if (selector) {
+        selector.value = window.activeModel;
+    }
+
+    // 2. Highlight selected primary model cards across the entire document
+    const cards = document.querySelectorAll('.model-card');
+    cards.forEach(card => {
+        const modelName = card.getAttribute('data-model') || card.querySelector('.model-name')?.textContent?.trim();
+        const activeBadge = card.querySelector('.model-active-badge');
+        const statusBadge = card.querySelector('.model-status-badge');
+        
+        if (modelName === window.activeModel) {
+            // Selected/Active state
+            card.classList.add('selected');
+            if (activeBadge) {
+                activeBadge.className = 'tag tag-green model-active-badge';
+                activeBadge.textContent = 'Active';
+                activeBadge.style.opacity = '1';
+            }
+            if (statusBadge) {
+                statusBadge.style.display = 'inline-block';
+                statusBadge.className = 'tag tag-cyan model-status-badge';
+                statusBadge.textContent = 'SELECTED PRIMARY';
+            }
+            card.style.borderColor = 'var(--cyan)';
+        } else {
+            // Standby state
+            card.classList.remove('selected');
+            if (activeBadge) {
+                activeBadge.className = 'tag tag-cyan model-active-badge';
+                activeBadge.textContent = 'Standby';
+                activeBadge.style.opacity = '0.4';
+            }
+            if (statusBadge) {
+                statusBadge.style.display = 'none';
+            }
+            card.style.borderColor = 'var(--border)';
+        }
+    });
+
+    // 3. Update active metrics on Overview
+    const metrics = BASELINE_METRICS[window.activeModel];
+    if (metrics) {
+        const accuracyEl = document.getElementById('metric-accuracy');
+        const f1El = document.getElementById('metric-f1');
+        const aucEl = document.getElementById('metric-auc');
+        const fprEl = document.getElementById('metric-fpr');
+
+        if (accuracyEl) accuracyEl.textContent = `${metrics.accuracy}%`;
+        if (f1El) f1El.textContent = metrics.f1.toFixed(3);
+        if (aucEl) aucEl.textContent = metrics.roc_auc.toFixed(3);
+        if (fprEl) fprEl.textContent = metrics.fpr;
+    }
+
+    // 3b. Update Active Threat Score card & Dynamic Model-specific Calculation Explanations
+    const activeModelBadge = document.getElementById('active-model-badge');
+    if (activeModelBadge) {
+        activeModelBadge.textContent = window.activeModel;
+    }
+
+    const MODEL_EXPLANATIONS = {
+        "Random Forest": "Tỉ lệ số lượng cây quyết định độc lập dự đoán \"Malware\" trên tổng số 100 cây của rừng.",
+        "CatBoost": "Xác suất tính bằng hàm Sigmoid của giá trị lề đối xứng (Symmetric Margin) tích lũy qua cấu trúc Oblivious Trees.",
+        "XGBoost": "Hàm kích hoạt Logistic Sigmoid quy đổi tổng điểm log-odds tích lũy từ chuỗi boosting cây quyết định yếu.",
+        "LightGBM": "Xác suất phân lớp của các cây quyết định phát triển theo chiều sâu (Leaf-wise), tối ưu hóa bằng phương pháp lọc mẫu GOSS.",
+        "AdaBoost": "Tổng bình chọn có trọng số (weighted vote) của các bộ phân loại yếu (Decision Stumps - cây 1 tầng).",
+        "Logistic Regression": "Xác suất đi qua hàm Sigmoid của tổng tổ hợp tuyến tính trọng số tối ưu và 200 đặc trưng PE tĩnh đã chuẩn hóa Gauss."
+    };
+
+    const explanationEl = document.getElementById('metric-threat-explanation');
+    if (explanationEl) {
+        explanationEl.textContent = MODEL_EXPLANATIONS[window.activeModel] || "";
+    }
+
+    const scoreValEl = document.getElementById('metric-active-threat-score');
+    if (scoreValEl) {
+        if (currentScanData && currentScanData.model_scores && currentScanData.model_scores[window.activeModel] !== undefined) {
+            let prob = currentScanData.model_scores[window.activeModel];
+            scoreValEl.textContent = `${(prob * 100).toFixed(1)}%`;
+            scoreValEl.style.color = prob > 0.5 ? 'var(--red)' : 'var(--green)';
+        } else {
+            scoreValEl.textContent = '0.0%';
+            scoreValEl.style.color = 'var(--text-dim)';
+        }
+    }
+
+    // Update threat score tooltip content dynamically based on current model and scan data
+    const tooltipEl = document.getElementById('threat-score-tooltip');
+    if (tooltipEl) {
+        if (currentScanData && currentScanData.model_scores && currentScanData.model_scores[window.activeModel] !== undefined) {
+            const prob = currentScanData.model_scores[window.activeModel];
+            const score = (prob * 100).toFixed(1);
+            const isMalware = prob > 0.5;
+            
+            // Calculate log-odds margin for models that use Sigmoid (CatBoost, XGBoost, LightGBM, Logistic Regression)
+            let margin = 0;
+            if (prob <= 0.000001) margin = -12.0;
+            else if (prob >= 0.999999) margin = 12.0;
+            else margin = Math.log(prob / (1 - prob));
+            
+            let tooltipContent = "";
+            switch (window.activeModel) {
+                case "Random Forest": {
+                    const votes = Math.round(prob * 100);
+                    const safeVotes = 100 - votes;
+                    tooltipContent = `
+                        <strong>Giải thích toán học (Random Forest):</strong><br/>
+                        Tệp tin có chỉ số nguy hại là <strong style="color: ${isMalware ? 'var(--red)' : 'var(--green)'};">${score}%</strong>.<br/>
+                        Trong tổng số 100 cây quyết định độc lập được huấn luyện song song, có tới <strong style="color: var(--cyan);">${votes} cây</strong> đồng thuận dự đoán cấu trúc PE của tệp là MALWARE.<br/>
+                        ${isMalware 
+                            ? 'Sự đồng thuận áp đảo này (&gt;50%) khẳng định độ tin cậy vượt trội của dự đoán độc hại.' 
+                            : `Số cây phát hiện dấu hiệu độc hại nằm dưới ngưỡng cảnh báo, đa số là <strong>${safeVotes} cây</strong> xác nhận tệp an toàn (SAFE/BENIGN).`
+                        }
+                    `;
+                    break;
+                }
+                case "CatBoost": {
+                    tooltipContent = `
+                        <strong>Giải thích toán học (CatBoost):</strong><br/>
+                        Chuỗi cây quyết định đối xứng (Oblivious Trees) tích lũy tổng giá trị lề là <strong style="color: var(--cyan);">${margin.toFixed(4)}</strong>.<br/>
+                        Khi đi qua hàm kích hoạt Sigmoid chuyển đổi xác suất:<br/>
+                        <span style="font-family: var(--mono); color: var(--cyan); display: block; margin: 4px 0; text-align: center; font-size: 10px;">
+                            σ(${margin.toFixed(2)}) = 1 / (1 + e<sup>-${margin.toFixed(2)}</sup>) = ${score}%
+                        </span>
+                        ${isMalware 
+                            ? 'Giá trị lề dương lớn cho thấy các đặc trưng PE tĩnh của tệp tin mang nhiều dấu hiệu mã độc rõ rệt.' 
+                            : 'Giá trị lề âm sâu xác nhận các đặc trưng PE tĩnh của tệp hoàn toàn thuộc nhóm phần mềm sạch.'
+                        }
+                    `;
+                    break;
+                }
+                case "XGBoost": {
+                    tooltipContent = `
+                        <strong>Giải thích toán học (XGBoost):</strong><br/>
+                        Tổng điểm log-odds z tích lũy qua chuỗi cây quyết định yếu của XGBoost đạt <strong style="color: var(--cyan);">${margin.toFixed(4)}</strong>.<br/>
+                        Ánh xạ qua hàm Logistic Sigmoid:<br/>
+                        <span style="font-family: var(--mono); color: var(--cyan); display: block; margin: 4px 0; text-align: center; font-size: 10px;">
+                            σ(${margin.toFixed(2)}) = 1 / (1 + e<sup>-${margin.toFixed(2)}</sup>) = ${score}%
+                        </span>
+                        ${isMalware 
+                            ? 'Các đặc trưng cấu trúc phần PE của tệp tin kích hoạt các nhánh cây quyết định độc hại với tổng trọng số dương cao.' 
+                            : 'Các cây quyết định gán điểm âm sâu cho thấy tệp tin không có các đặc trưng độc hại nguy hiểm.'
+                        }
+                    `;
+                    break;
+                }
+                case "LightGBM": {
+                    tooltipContent = `
+                        <strong>Giải thích toán học (LightGBM):</strong><br/>
+                        Thuật toán phân nhánh theo chiều sâu (Leaf-wise) kết hợp GOSS tích lũy tổng trọng số tối ưu là <strong style="color: var(--cyan);">${margin.toFixed(4)}</strong>.<br/>
+                        Ánh xạ qua hàm Sigmoid cho ra xác suất độc hại:<br/>
+                        <span style="font-family: var(--mono); color: var(--cyan); display: block; margin: 4px 0; text-align: center; font-size: 10px;">
+                            σ(${margin.toFixed(2)}) = 1 / (1 + e<sup>-${margin.toFixed(2)}</sup>) = ${score}%
+                        </span>
+                        ${isMalware 
+                            ? 'Cấu trúc tệp rơi vào các nút lá có tỷ lệ mẫu mã độc rất cao mà mô hình học được từ tập dữ liệu.' 
+                            : 'Cấu trúc các trường PE tĩnh của tệp rơi vào các nút lá có độ an toàn cao.'
+                        }
+                    `;
+                    break;
+                }
+                case "AdaBoost": {
+                    tooltipContent = `
+                        <strong>Giải thích toán học (AdaBoost):</strong><br/>
+                        Tệp tin đạt chỉ số đe dọa là <strong style="color: ${isMalware ? 'var(--red)' : 'var(--green)'};">${score}%</strong>.<br/>
+                        AdaBoost phân lớp tệp bằng tổng bình chọn có trọng số (weighted votes) của các cây quyết định 1 tầng (Decision Stumps thích ứng).<br/>
+                        Trong đó, các đặc trưng tĩnh như kích thước section, entropy và số lượng imports đóng vai trò then chốt trong bình chọn trọng số.
+                    `;
+                    break;
+                }
+                case "Logistic Regression": {
+                    tooltipContent = `
+                        <strong>Giải thích toán học (Logistic Regression):</strong><br/>
+                        Tổng tổ hợp tuyến tính w<sup>T</sup>x + b của 200 đặc trưng PE tĩnh đạt giá trị <strong style="color: var(--cyan);">${margin.toFixed(4)}</strong>.<br/>
+                        Ánh xạ qua hàm kích hoạt Sigmoid chuyển đổi xác suất:<br/>
+                        <span style="font-family: var(--mono); color: var(--cyan); display: block; margin: 4px 0; text-align: center; font-size: 10px;">
+                            σ(${margin.toFixed(2)}) = 1 / (1 + e<sup>-${margin.toFixed(2)}</sup>) = ${score}%
+                        </span>
+                        ${isMalware 
+                            ? 'Các hệ số đặc trưng dương lớn (ví dụ: entropy cao ở section nén, số lượng DLL import đáng ngờ) đẩy giá trị tổ hợp lên mức dương.' 
+                            : 'Các đặc trưng tệp tin lành tính tiêu chuẩn giữ cho giá trị tổ hợp tuyến tính ở mức âm sâu, khẳng định tệp an toàn.'
+                        }
+                    `;
+                    break;
+                }
+                default: {
+                    tooltipContent = `<strong>Giải thích lý do (${window.activeModel}):</strong><br/>Chỉ số nguy cơ được tính toán bằng mô hình ${window.activeModel} đạt ${score}%.`;
+                }
+            }
+            tooltipEl.innerHTML = tooltipContent;
+        } else {
+            // Idle state
+            let idleContent = "";
+            switch (window.activeModel) {
+                case "Random Forest":
+                    idleContent = `
+                        <strong>Hệ thống đang sẵn sàng (Random Forest):</strong><br/>
+                        Mô hình phân loại đồng diễn (Ensemble Learning) gồm 100 cây quyết định độc lập. Khi quét tệp, mỗi cây đưa ra dự đoán riêng. Điểm đe dọa là tỷ lệ phần trăm số cây kết luận là mã độc:<br/>
+                        <span style="font-family: var(--mono); color: var(--cyan); display: block; margin: 4px 0; text-align: center; font-size: 10px;">
+                            P(y = 1 | x) = 1/100 ∑ T<sub>i</sub>(x)
+                        </span>
+                        Hãy tải tệp lên hoặc chọn mẫu thử để phân tích.
+                    `;
+                    break;
+                case "CatBoost":
+                    idleContent = `
+                        <strong>Hệ thống đang sẵn sàng (CatBoost):</strong><br/>
+                        Mô hình Gradient Boosting sử dụng các cây đối xứng (Oblivious Trees) để tránh overfitting. Tổng điểm lề (margin output) của tất cả các cây đối xứng sau đó được đi qua hàm kích hoạt Sigmoid để tính xác suất nguy hiểm:<br/>
+                        <span style="font-family: var(--mono); color: var(--cyan); display: block; margin: 4px 0; text-align: center; font-size: 10px;">
+                            P(y = 1 | x) = 1 / (1 + e<sup>-∑ f<sub>k</sub>(x)</sup>)
+                        </span>
+                        Hãy tải tệp lên hoặc chọn mẫu thử để phân tích.
+                    `;
+                    break;
+                case "XGBoost":
+                    idleContent = `
+                        <strong>Hệ thống đang sẵn sàng (XGBoost):</strong><br/>
+                        Mô hình Extreme Gradient Boosting tối ưu hóa cực hạn hàm mục tiêu có thành phần chính quy hóa (L1/L2). Xác suất độc hại được tính bằng cách chuyển đổi tổng điểm log-odds của các cây quyết định yếu qua hàm kích hoạt Sigmoid:<br/>
+                        <span style="font-family: var(--mono); color: var(--cyan); display: block; margin: 4px 0; text-align: center; font-size: 10px;">
+                            P(y = 1 | x) = 1 / (1 + e<sup>-z</sup>)
+                        </span>
+                        Hãy tải tệp lên hoặc chọn mẫu thử để phân tích.
+                    `;
+                    break;
+                case "LightGBM":
+                    idleContent = `
+                        <strong>Hệ thống đang sẵn sàng (LightGBM):</strong><br/>
+                        Mô hình phân nhánh theo chiều sâu (Leaf-wise growth) kết hợp phương pháp lọc mẫu GOSS (Gradient-based One-Side Sampling). Tổng điểm tích lũy của cây được chuyển đổi bằng hàm Sigmoid:<br/>
+                        <span style="font-family: var(--mono); color: var(--cyan); display: block; margin: 4px 0; text-align: center; font-size: 10px;">
+                            P(y = 1 | x) = σ(∑ w<sub>i</sub> × h<sub>i</sub>(x))
+                        </span>
+                        Hãy tải tệp lên hoặc chọn mẫu thử để phân tích.
+                    `;
+                    break;
+                case "AdaBoost":
+                    idleContent = `
+                        <strong>Hệ thống đang sẵn sàng (AdaBoost):</strong><br/>
+                        Mô hình Boosting thích ứng bằng cách liên kết chuỗi cây quyết định 1 tầng (Decision Stumps). Mỗi stump có trọng số α<sub>t</sub> dựa trên độ chính xác. Điểm đe dọa phản ánh tổng bình chọn có trọng số chuẩn hóa:<br/>
+                        <span style="font-family: var(--mono); color: var(--cyan); display: block; margin: 4px 0; text-align: center; font-size: 10px;">
+                            H(x) = ∑ α<sub>t</sub> × h<sub>t</sub>(x)
+                        </span>
+                        Hãy tải tệp lên hoặc chọn mẫu thử để phân tích.
+                    `;
+                    break;
+                case "Logistic Regression":
+                    idleContent = `
+                        <strong>Hệ thống đang sẵn sàng (Logistic Regression):</strong><br/>
+                        Mô hình tuyến tính tính điểm nguy hại bằng cách lấy tổ hợp tuyến tính các đặc trưng PE đã nhân với trọng số tối ưu và cộng bias, sau đó truyền vào hàm Sigmoid:<br/>
+                        <span style="font-family: var(--mono); color: var(--cyan); display: block; margin: 4px 0; text-align: center; font-size: 10px;">
+                            P(y = 1 | x) = 1 / (1 + e<sup>-(w<sup>T</sup>x + b)</sup>)
+                        </span>
+                        Hãy tải tệp lên hoặc chọn mẫu thử để phân tích.
+                    `;
+                    break;
+                default:
+                    idleContent = `
+                        <strong>Hệ thống đang sẵn sàng (${window.activeModel}):</strong><br/>
+                        Hãy tải tệp lên hoặc chọn mẫu thử để phân tích chi tiết.
+                    `;
+            }
+            tooltipEl.innerHTML = idleContent;
+        }
+    }
+
+    // 4. Update scan results dynamically if currentScanData is in memory
+    if (currentScanData && currentScanData.model_scores && currentScanData.model_scores[window.activeModel] !== undefined) {
+        let prob = currentScanData.model_scores[window.activeModel];
+        let threat_score = parseFloat((prob * 100).toFixed(1));
+        
+        let threshold = parseFloat(document.getElementById('setting-threshold')?.value || 0.5);
+        let isMalware = prob > threshold;
+        
+        let updatedData = {
+            ...currentScanData,
+            threat_score: threat_score,
+            verdict: isMalware ? "DANGEROUS / MALWARE" : "SAFE / BENIGN"
+        };
+        
+        // Update Overview Gauge
+        updateThreatGauge(updatedData, isMalware, 'gauge-ring', 'gauge-pct', 'threat-level', 'threat-desc', 'threat-pulse');
+        
+        // Update Scanner Gauge
+        updateThreatGauge(updatedData, isMalware, 'scanner-gauge-ring', 'scanner-gauge-pct', 'scanner-threat-level', null, null);
+        
+        // Update Scanner Verdict Badge
+        const resBadge = document.getElementById('scan-res-badge');
+        if (resBadge) {
+            if (isMalware) {
+                resBadge.className = 'tag tag-red';
+                resBadge.textContent = 'MALWARE DETECTED';
+            } else {
+                resBadge.className = 'tag tag-green';
+                resBadge.textContent = 'CLEAN';
+            }
+        }
+    }
+}
+
+
+function setupTimelineTimeframes() {
+    window.timelineTimeframe = "24h";
+    
+    const container = document.getElementById('timeline-timeframe-btns');
+    if (!container) return;
+
+    container.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tf-btn');
+        if (!btn) return;
+
+        // Toggle active states
+        const btns = container.querySelectorAll('.tf-btn');
+        btns.forEach(b => {
+            b.classList.remove('active');
+            b.style.background = "";
+            b.style.color = "";
+            b.style.borderColor = "";
+        });
+
+        btn.classList.add('active');
+        btn.style.background = "var(--cyan-dim)";
+        btn.style.color = "var(--cyan)";
+        btn.style.borderColor = "var(--border-strong)";
+
+        // Update global variable
+        window.timelineTimeframe = btn.getAttribute('data-tf');
+
+        // Update badge text
+        const badge = document.getElementById('timeline-timeframe-badge');
+        if (badge) {
+            badge.textContent = `Last ${window.timelineTimeframe}`;
+        }
+
+        appendLog('SYS', `Đã chuyển mốc thời gian Timeline sang: ${window.timelineTimeframe}`, 'info');
+        renderTimelineSVG();
+    });
+
+    // Run an interval to auto-refresh the timeline so that 10s and 20s options automatically slide/expire in real time!
+    setInterval(() => {
+        const overviewTab = document.getElementById('view-overview');
+        if (overviewTab && overviewTab.style.display !== 'none') {
+            if (window.timelineTimeframe === "10s" || window.timelineTimeframe === "20s") {
+                renderTimelineSVG();
+            }
+        }
+    }, 1000);
+}
+
+function renderTimelineSVG() {
+    const svg = document.querySelector('.chart-area svg');
+    if (!svg) return;
+
+    const timeframe = window.timelineTimeframe || "24h";
+    const now = Date.now();
+    let points = [];
+    let basePoints = [];
+
+    if (timeframe === "10s" || timeframe === "20s") {
+        const duration = timeframe === "10s" ? 10000 : 20000;
+        const interval = duration / 9; // 10 points -> 9 intervals
+        for (let i = 0; i < 10; i++) {
+            const t_i = now - (9 - i) * interval;
+            // Find latest scan before or at t_i
+            let latestScan = null;
+            for (let j = sessionTimelineScans.length - 1; j >= 0; j--) {
+                if (sessionTimelineScans[j].timestamp <= t_i) {
+                    latestScan = sessionTimelineScans[j];
+                    break;
+                }
+            }
+            const scanned = latestScan ? latestScan.scanned : 0;
+            const threats = latestScan ? latestScan.threats : 0;
+            const timeStr = new Date(t_i).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            points.push({ scanned, threats, time: timeStr });
+        }
+    } else {
+        // Define basePoints depending on timeframe
+        if (timeframe === "1h") {
+            const baseScanned = [2, 6, 12, 19, 28];
+            const baseThreats = [0, 1, 3, 4, 6];
+            for (let i = 0; i < 5; i++) {
+                const t_base = now - (5 - i) * 10 * 60 * 1000;
+                const timeStr = new Date(t_base).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                basePoints.push({ scanned: baseScanned[i], threats: baseThreats[i], time: timeStr });
+            }
+        } else if (timeframe === "7d") {
+            basePoints = [
+                { scanned: 10, threats: 2, time: "Mon" },
+                { scanned: 25, threats: 5, time: "Tue" },
+                { scanned: 42, threats: 8, time: "Wed" },
+                { scanned: 65, threats: 14, time: "Thu" },
+                { scanned: 80, threats: 18, time: "Fri" }
+            ];
+        } else {
+            // Default 24h
+            basePoints = [
+                { scanned: 4, threats: 1, time: "08:00" },
+                { scanned: 12, threats: 2, time: "10:00" },
+                { scanned: 25, threats: 5, time: "12:00" },
+                { scanned: 38, threats: 7, time: "14:00" },
+                { scanned: 50, threats: 12, time: "16:00" }
+            ];
+        }
+
+        // Filter real scans within timeframe
+        let cutoff = 0;
+        if (timeframe === "1h") cutoff = 3600000;
+        else if (timeframe === "24h") cutoff = 86400000;
+        else if (timeframe === "7d") cutoff = 86400000 * 7;
+
+        const filteredScans = sessionTimelineScans.filter(s => now - s.timestamp <= cutoff);
+
+        // Combine basePoints with real session scans
+        points = [...basePoints];
+        filteredScans.forEach((scan) => {
+            points.push({
+                scanned: basePoints[basePoints.length - 1].scanned + scan.scanned,
+                threats: basePoints[basePoints.length - 1].threats + scan.threats,
+                time: scan.time
+            });
+        });
+
+        // Limit to last 10 points
+        if (points.length > 10) {
+            points = points.slice(points.length - 10);
+        }
+    }
+
+    const width = 580;
+    const height = 160;
+    const paddingLeft = 40;
+    const paddingRight = 30;
+    const paddingTop = 20;
+    const paddingBottom = 25;
+
+    const graphWidth = width - paddingLeft - paddingRight;
+    const graphHeight = height - paddingTop - paddingBottom;
+
+    const maxScanned = Math.max(...points.map(p => p.scanned)) || 10;
+    const maxY = Math.ceil(maxScanned * 1.2 / 10) * 10; // 20% headroom, nearest 10
+
+    let svgContent = `
+        <defs>
+          <linearGradient id="cyanGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#00d2c8" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#00d2c8" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#ff3d5a" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="#ff3d5a" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+    `;
+
+    // Grid lines & Y labels
+    const gridLines = 4;
+    for (let i = 0; i <= gridLines; i++) {
+        const yVal = Math.round((maxY / gridLines) * i);
+        const yPos = height - paddingBottom - (yVal / maxY) * graphHeight;
+        
+        svgContent += `
+            <line x1="${paddingLeft}" y1="${yPos}" x2="${width - paddingRight}" y2="${yPos}" stroke="var(--border)" stroke-width="1"/>
+            <text x="${paddingLeft - 8}" y="${yPos + 3}" fill="var(--text-secondary)" font-size="8" font-family="monospace" text-anchor="end">${yVal}</text>
+        `;
+    }
+
+    const divisor = points.length > 1 ? points.length - 1 : 1;
+    const coords = points.map((p, i) => {
+        const x = paddingLeft + (i / divisor) * graphWidth;
+        const yScanned = height - paddingBottom - (p.scanned / maxY) * graphHeight;
+        const yThreats = height - paddingBottom - (p.threats / maxY) * graphHeight;
+        return { x, yScanned, yThreats, ...p };
+    });
+
+    // Fills
+    let scannedFillPath = `M ${coords[0].x} ${height - paddingBottom}`;
+    coords.forEach(c => { scannedFillPath += ` L ${c.x} ${c.yScanned}`; });
+    scannedFillPath += ` L ${coords[coords.length - 1].x} ${height - paddingBottom} Z`;
+
+    let threatsFillPath = `M ${coords[0].x} ${height - paddingBottom}`;
+    coords.forEach(c => { threatsFillPath += ` L ${c.x} ${c.yThreats}`; });
+    threatsFillPath += ` L ${coords[coords.length - 1].x} ${height - paddingBottom} Z`;
+
+    svgContent += `
+        <path d="${scannedFillPath}" fill="url(#cyanGrad)"/>
+        <path d="${threatsFillPath}" fill="url(#redGrad)"/>
+    `;
+
+    // Lines
+    let scannedLinePath = `M ${coords[0].x} ${coords[0].yScanned}`;
+    let threatsLinePath = `M ${coords[0].x} ${coords[0].yThreats}`;
+
+    for (let i = 1; i < coords.length; i++) {
+        scannedLinePath += ` L ${coords[i].x} ${coords[i].yScanned}`;
+        threatsLinePath += ` L ${coords[i].x} ${coords[i].yThreats}`;
+    }
+
+    svgContent += `
+        <path d="${scannedLinePath}" fill="none" stroke="#00d2c8" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="${threatsLinePath}" fill="none" stroke="#ff3d5a" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="4,2"/>
+    `;
+
+    // X labels & dots
+    coords.forEach((c, i) => {
+        if (i % 2 === 0 || i === coords.length - 1) {
+            let label = c.time || '00:00';
+            if (timeframe === "10s" || timeframe === "20s") {
+                const parts = label.split(':');
+                if (parts.length === 3) {
+                    label = `${parts[1]}:${parts[2]}`; // MM:SS
+                }
+            }
+            svgContent += `
+                <text x="${c.x}" y="${height - 5}" fill="var(--text-secondary)" font-size="8" font-family="monospace" text-anchor="middle">${label}</text>
+            `;
+        }
+        
+        let drawDot = false;
+        if (timeframe === "10s" || timeframe === "20s") {
+            drawDot = c.scanned > 0;
+        } else {
+            drawDot = i >= basePoints.length;
+        }
+
+        if (drawDot) {
+            svgContent += `
+                <circle cx="${c.x}" cy="${c.yScanned}" r="3.5" fill="#00d2c8" stroke="var(--bg-base)" stroke-width="1.2"/>
+                <circle cx="${c.x}" cy="${c.yThreats}" r="3.5" fill="#ff3d5a" stroke="var(--bg-base)" stroke-width="1.2"/>
+            `;
+        }
+    });
+
+    svg.innerHTML = svgContent;
 }

@@ -309,26 +309,34 @@ class CustomHTTPHandler(BaseHTTPRequestHandler):
             boundary = content_type.split("boundary=")[1].encode()
             body_bytes = self.rfile.read(content_length)
             
-            # Simple multipart parser to extract filename and bytes
+            # Simple multipart parser to extract filename, bytes, and selected model
             parts = body_bytes.split(b"--" + boundary)
             file_bytes = None
             filename = "uploaded_file.exe"
+            selected_model = "Random Forest"
             
             for part in parts:
-                if b"Content-Disposition:" in part and b"filename=" in part:
-                    # Find filename
-                    match = re.search(rb'filename="([^"]+)"', part)
-                    if match:
-                        filename = match.group(1).decode('utf-8', errors='ignore')
-                    
-                    # Find body start
-                    header_end = part.find(b"\r\n\r\n")
-                    if header_end != -1:
-                        # Extract file content (strip trailing CRLF)
-                        file_bytes = part[header_end+4:]
-                        if file_bytes.endswith(b"\r\n"):
-                            file_bytes = file_bytes[:-2]
-                        break
+                if b"Content-Disposition:" in part:
+                    if b"filename=" in part:
+                        # Find filename
+                        match = re.search(rb'filename="([^"]+)"', part)
+                        if match:
+                            filename = match.group(1).decode('utf-8', errors='ignore')
+                        
+                        # Find body start
+                        header_end = part.find(b"\r\n\r\n")
+                        if header_end != -1:
+                            # Extract file content (strip trailing CRLF)
+                            file_bytes = part[header_end+4:]
+                            if file_bytes.endswith(b"\r\n"):
+                                file_bytes = file_bytes[:-2]
+                    elif b'name="model"' in part:
+                        # Extract selected model parameter
+                        header_end = part.find(b"\r\n\r\n")
+                        if header_end != -1:
+                            val = part[header_end+4:].strip().decode('utf-8', errors='ignore')
+                            if val:
+                                selected_model = val
             
             if file_bytes:
                 is_json = filename.lower().endswith('.json')
@@ -503,8 +511,11 @@ class CustomHTTPHandler(BaseHTTPRequestHandler):
                     if is_packed:
                         indicators.append({"type": "danger", "message": "UPX compression markers detected in section names."})
                         
-                    threat_score = round(prob_lgb * 100, 1)
-                    verdict = "DANGEROUS / MALWARE" if prob_lgb > 0.5 else "SAFE / BENIGN"
+                    if selected_model not in MODELS:
+                        selected_model = "Random Forest"
+                    chosen_prob = model_scores[selected_model]
+                    threat_score = round(chosen_prob * 100, 1)
+                    verdict = "DANGEROUS / MALWARE" if chosen_prob > 0.5 else "SAFE / BENIGN"
                     
                     val_638 = float(df_full["F638"].iloc[0]) if "F638" in df_full.columns else 0.0
                     val_503 = float(df_full["F503"].iloc[0]) if "F503" in df_full.columns else 0.0
@@ -555,8 +566,14 @@ class CustomHTTPHandler(BaseHTTPRequestHandler):
             try:
                 post_data = json.loads(body_bytes.decode('utf-8'))
                 sample_name = post_data.get("sample")
+                selected_model = post_data.get("model", "Random Forest")
                 if sample_name in SAMPLES:
-                    response_data = SAMPLES[sample_name]
+                    # Return copy of sample data calibrated to chosen model
+                    response_data = json.loads(json.dumps(SAMPLES[sample_name]))
+                    if selected_model in response_data.get("model_scores", {}):
+                        prob = response_data["model_scores"][selected_model]
+                        response_data["threat_score"] = round(prob * 100, 1)
+                        response_data["verdict"] = "DANGEROUS / MALWARE" if prob > 0.5 else "SAFE / BENIGN"
                 else:
                     self.send_error(404, "Sample not found")
                     return
