@@ -223,7 +223,7 @@
   }
 
   .metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 8px; }
-  .metric-val { font-family: var(--display); font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+  .metric-val { font-family: 'Outfit', 'Inter', system-ui, sans-serif; font-size: 28px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
   .metric-val.red { color: var(--red); }
   .metric-val.cyan { color: var(--cyan); }
   .metric-val.amber { color: var(--amber); }
@@ -270,7 +270,7 @@
     background: var(--bg-card);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
-  .gauge-pct { font-family: var(--display); font-size: 22px; font-weight: 800; color: var(--red); }
+  .gauge-pct { font-family: 'Outfit', 'Inter', system-ui, sans-serif; font-size: 22px; font-weight: 800; color: var(--red); }
   .gauge-lbl { font-size: 8.5px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); }
   .threat-level { font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--red); }
   .threat-desc { font-size: 10.5px; color: var(--text-secondary); margin-top: 3px; }
@@ -325,7 +325,7 @@
   .model-type { font-size: 9.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px; }
   .model-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .mstat { text-align: center; }
-  .mstat-val { font-family: var(--display); font-weight: 700; font-size: 17px; color: var(--cyan); }
+  .mstat-val { font-family: 'Outfit', 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 17px; color: var(--cyan); }
   .mstat-lbl { font-size: 9px; color: var(--text-dim); text-transform: uppercase; }
   .model-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MalwareML — Threat Intelligence Platform</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="index.css">
 </head>
 <body>
@@ -153,233 +153,10 @@
         </div>
       </div>
 
-      <!-- Row: Chart + Threat Gauge -->
-      <div class="row-2col">
-        <!-- Detection Timeline -->
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">Detection Timeline</div>
-            <span class="tag tag-cyan" id="timeline-timeframe-badge">Last 24h</span>
-            <div class="flex-center gap-6 ml-auto" id="timeline-timeframe-btns">
-              <button class="btn btn-ghost tf-btn" data-tf="10s" style="padding:5px 10px;font-size:10.5px;">10s</button>
-              <button class="btn btn-ghost tf-btn" data-tf="20s" style="padding:5px 10px;font-size:10.5px;">20s</button>
-              <button class="btn btn-ghost tf-btn" data-tf="1h" style="padding:5px 10px;font-size:10.5px;">1h</button>
-              <button class="btn btn-ghost tf-btn active" data-tf="24h" style="padding:5px 10px;font-size:10.5px;background:var(--cyan-dim);color:var(--cyan);border-color:var(--border-strong)">24h</button>
-              <button class="btn btn-ghost tf-btn" data-tf="7d" style="padding:5px 10px;font-size:10.5px;">7d</button>
-            </div>
-          </div>
-          <div class="panel-body">
-            <div class="chart-area">
-              <svg viewBox="0 0 580 160" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="cyanGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#00d2c8" stop-opacity="0.25"/>
-                    <stop offset="100%" stop-color="#00d2c8" stop-opacity="0"/>
-                  </linearGradient>
-                  <linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#ff3d5a" stop-opacity="0.2"/>
-                    <stop offset="100%" stop-color="#ff3d5a" stop-opacity="0"/>
-                  </linearGradient>
-                </defs>
-                <!-- Grid lines -->
-                <line x1="0" y1="30" x2="580" y2="30" stroke="rgba(0,210,200,0.06)" stroke-width="1"/>
-                <line x1="0" y1="70" x2="580" y2="70" stroke="rgba(0,210,200,0.06)" stroke-width="1"/>
-                <line x1="0" y1="110" x2="580" y2="110" stroke="rgba(0,210,200,0.06)" stroke-width="1"/>
-                <line x1="0" y1="150" x2="580" y2="150" stroke="rgba(0,210,200,0.06)" stroke-width="1"/>
-
-                <!-- Labels -->
-                <text x="0" y="28" fill="#3d5268" font-size="8" font-family="monospace">200</text>
-                <text x="0" y="68" fill="#3d5268" font-size="8" font-family="monospace">150</text>
-                <text x="0" y="108" fill="#3d5268" font-size="8" font-family="monospace">100</text>
-                <text x="0" y="148" fill="#3d5268" font-size="8" font-family="monospace">50</text>
-
-                <!-- Scanned area fill -->
-                <path d="M22,120 L70,100 L118,95 L166,85 L214,60 L262,70 L310,50 L358,55 L406,45 L454,30 L502,35 L550,25 L550,155 L22,155 Z"
-                  fill="url(#cyanGrad)"/>
-                <!-- Scanned line -->
-                <path d="M22,120 L70,100 L118,95 L166,85 L214,60 L262,70 L310,50 L358,55 L406,45 L454,30 L502,35 L550,25"
-                  fill="none" stroke="#00d2c8" stroke-width="1.8" stroke-linejoin="round"/>
-
-                <!-- Threats area fill -->
-                <path d="M22,140 L70,130 L118,135 L166,120 L214,110 L262,115 L310,105 L358,90 L406,100 L454,80 L502,85 L550,75 L550,155 L22,155 Z"
-                  fill="url(#redGrad)"/>
-                <!-- Threats line -->
-                <path d="M22,140 L70,130 L118,135 L166,120 L214,110 L262,115 L310,105 L358,90 L406,100 L454,80 L502,85 L550,75"
-                  fill="none" stroke="#ff3d5a" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="4,2"/>
-
-                <!-- X axis labels -->
-                <text x="22" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">00:00</text>
-                <text x="118" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">04:00</text>
-                <text x="214" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">08:00</text>
-                <text x="310" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">12:00</text>
-                <text x="406" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">16:00</text>
-                <text x="502" y="162" fill="#3d5268" font-size="8" font-family="monospace" text-anchor="middle">20:00</text>
-
-                <!-- Spike callout -->
-                <circle cx="454" cy="30" r="3.5" fill="none" stroke="#00d2c8" stroke-width="1"/>
-                <line x1="454" y1="26" x2="454" y2="14" stroke="#00d2c8" stroke-width="0.8" stroke-dasharray="2,2"/>
-                <text x="458" y="13" fill="#00d2c8" font-size="7.5" font-family="monospace">PEAK</text>
-              </svg>
-            </div>
-            <!-- Legend -->
-            <div class="flex-center mt-10" style="font-size:10.5px; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-              <div class="flex-center gap-10">
-                <div class="flex-center gap-6"><div style="width:20px;height:2px;background:var(--cyan);border-radius:1px"></div><span class="text-muted">Files Scanned</span></div>
-                <div class="flex-center gap-6"><div style="width:20px;height:2px;background:var(--red);border-radius:1px;border-top:1px dashed var(--red)"></div><span class="text-muted">Threats Found</span></div>
-              </div>
-              <span style="font-size:9.5px;color:var(--text-dim);font-style:italic;">Biểu đồ tự động cập nhật thời gian thực khi có lượt quét tệp mới trong phiên làm việc hiện tại.</span>
-            </div>
-            <div class="sep" style="margin: 10px 0;"></div>
-            <div class="timeline-explanation" style="font-size: 10.5px; color: var(--text-secondary); line-height: 1.45; background: rgba(0, 210, 200, 0.03); border: 1px dashed rgba(0, 210, 200, 0.15); border-radius: 6px; padding: 10px; font-family: var(--display);">
-              <strong>💡 Ý Nghĩa Trực Quan Hoạt Động (Detection Timeline):</strong>
-              <p style="margin: 4px 0 0 0;">
-                Biểu đồ này theo dõi lưu lượng quét tệp (<strong>Files Scanned</strong>) so với số lượng mã độc thực sự được phát hiện (<strong>Threats Found</strong>) theo thời gian thực trong 24 giờ qua. Điều này giúp các kỹ sư An ninh Mạng (SOC):
-              </p>
-              <ul style="margin: 4px 0 0 0; padding-left: 16px; color: var(--text-dim);">
-                <li>Nhận diện các thời điểm bùng phát tấn công (Threat Spikes) để cô lập mạng lưới kịp thời.</li>
-                <li>Đánh giá hiệu suất hoạt động quét liên tục của hệ thống ML và đảm bảo độ trễ phản hồi tối thiểu.</li>
-                <li>Theo dõi xu hướng phân phối mã độc nhằm tối ưu hóa các lớp phòng thủ chủ động của doanh nghiệp.</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <!-- Threat Gauge -->
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">Threat Level</div>
-            <span class="tag tag-green pulse" id="threat-pulse">READY</span>
-          </div>
-          <div class="panel-body">
-            <div class="threat-gauge">
-              <div class="gauge-ring" id="gauge-ring">
-                <div class="gauge-inner">
-                  <span class="gauge-pct" id="gauge-pct" style="color: var(--green);">0%</span>
-                  <span class="gauge-lbl" id="gauge-lbl">risk index</span>
-                </div>
-              </div>
-              <div class="threat-level" id="threat-level" style="color: var(--green);">SAFE / BENIGN</div>
-              <div class="threat-desc" id="threat-desc">Waiting for file upload...</div>
-            </div>
-            <!-- Threat Alert Warning Container -->
-            <div id="overview-threat-alert-container" style="display: none; margin-top: 15px; width: 100%;"></div>
-            <div class="sep"></div>
-            <div class="threat-bars" id="baseline-models-bars">
-              <!-- Random Forest -->
-              <div class="threat-row">
-                <span class="threat-type">Random Forest</span>
-                <div class="tbar-track"><div class="tbar-fill" id="bar-rf" style="width:0%;background:var(--cyan)"></div></div>
-                <span class="threat-pct-label text-cyan" id="pct-rf">0.0%</span>
-              </div>
-              <!-- CatBoost -->
-              <div class="threat-row">
-                <span class="threat-type">CatBoost</span>
-                <div class="tbar-track"><div class="tbar-fill" id="bar-cat" style="width:0%;background:var(--cyan)"></div></div>
-                <span class="threat-pct-label text-cyan" id="pct-cat">0.0%</span>
-              </div>
-              <!-- XGBoost -->
-              <div class="threat-row">
-                <span class="threat-type">XGBoost</span>
-                <div class="tbar-track"><div class="tbar-fill" id="bar-xgb" style="width:0%;background:var(--cyan)"></div></div>
-                <span class="threat-pct-label text-cyan" id="pct-xgb">0.0%</span>
-              </div>
-              <!-- LightGBM -->
-              <div class="threat-row">
-                <span class="threat-type">LightGBM</span>
-                <div class="tbar-track"><div class="tbar-fill" id="bar-lgb" style="width:0%;background:var(--cyan)"></div></div>
-                <span class="threat-pct-label text-cyan" id="pct-lgb">0.0%</span>
-              </div>
-              <!-- AdaBoost -->
-              <div class="threat-row">
-                <span class="threat-type">AdaBoost</span>
-                <div class="tbar-track"><div class="tbar-fill" id="bar-ada" style="width:0%;background:var(--cyan)"></div></div>
-                <span class="threat-pct-label text-cyan" id="pct-ada">0.0%</span>
-              </div>
-              <!-- Logistic Reg -->
-              <div class="threat-row">
-                <span class="threat-type">Logistic Reg</span>
-                <div class="tbar-track"><div class="tbar-fill" id="bar-lr" style="width:0%;background:var(--cyan)"></div></div>
-                <span class="threat-pct-label text-cyan" id="pct-lr">0.0%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Row: Recent Scans + Upload + Terminal -->
-      <div class="row-2col" style="grid-template-columns: 1fr 300px;">
-        <!-- Recent Scans -->
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">Recent Scans</div>
-            <span class="tag tag-cyan"><span class="live-dot" style="width:5px;height:5px;margin-right:4px"></span>Live</span>
-            <a href="#" style="margin-left:auto;font-size:10.5px;color:var(--cyan);text-decoration:none">View all →</a>
-          </div>
-          <div style="overflow-x:auto">
-            <table>
-              <thead>
-                <tr>
-                  <th>File</th>
-                  <th>Type</th>
-                  <th>Verdict</th>
-                  <th>Confidence</th>
-                  <th>Model</th>
-                  <th>Time</th>
-                </tr>
-              </thead>
-              <tbody id="recent-scans-tbody">
-                <!-- Rows will be added dynamically by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Right column: Upload + Terminal -->
-        <div style="display:flex;flex-direction:column;gap:16px">
-          <!-- Upload -->
-          <div class="panel">
-            <div class="panel-header">
-              <div class="panel-title">Quick Scan</div>
-              <span class="tag tag-green">Ready</span>
-            </div>
-            <div class="panel-body">
-              <div class="upload-zone" id="upload-zone">
-                <input type="file" id="file-upload" style="display:none;" />
-                <div class="upload-icon">
-                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="2" y="6" width="24" height="18" rx="2" stroke="#00d2c8" stroke-width="1.3"/><path d="M14 2v14M9 7l5-5 5 5" stroke="#00d2c8" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <div class="upload-text">Drop file to analyze</div>
-                <div class="upload-sub">EXE · JSON · DLL · PDF · up to 512MB</div>
-              </div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <span class="tag tag-cyan">PE32</span>
-                <span class="tag tag-cyan">Office</span>
-                <span class="tag tag-cyan">Script</span>
-                <span class="tag tag-cyan">Archive</span>
-                <span class="tag tag-cyan">APK</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Terminal -->
-          <div class="panel">
-            <div class="panel-header">
-              <div class="panel-title">System Log</div>
-              <span class="flex-center gap-6" style="font-size:9.5px;color:var(--green)"><span class="live-dot" style="width:5px;height:5px"></span>Live</span>
-            </div>
-            <div class="panel-body" style="padding:10px 12px">
-              <div class="terminal" id="system-terminal">
-                <div class="t-line"><span class="t-time" id="init-time">00:00:00</span><span class="t-tag t-info">[SYS]</span><span class="t-msg">MalwareML Pipeline initialized. Waiting for input...</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Row: Models + Training -->
-      <div class="row-3col">
+      <!-- Row: Active Models + Threat Sidebar -->
+      <div class="row-2col" style="grid-template-columns: 1fr 340px; margin-bottom: 16px;">
         <!-- Active Models -->
-        <div class="panel" style="grid-column: span 2;">
+        <div class="panel">
           <div class="panel-header">
             <div class="panel-title">Active ML Models</div>
             <a href="#" id="manage-models-link" style="margin-left:auto;font-size:10.5px;color:var(--cyan);text-decoration:none">Manage →</a>
@@ -491,6 +268,137 @@
           </div>
         </div>
 
+        <!-- Right column: Threat Level + Quick Scan + Terminal -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Threat Gauge -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Threat Level</div>
+              <span class="tag tag-green pulse" id="threat-pulse">READY</span>
+            </div>
+            <div class="panel-body">
+              <div class="threat-gauge">
+                <div class="gauge-ring" id="gauge-ring">
+                  <div class="gauge-inner">
+                    <span class="gauge-pct" id="gauge-pct" style="color: var(--green);">0%</span>
+                    <span class="gauge-lbl" id="gauge-lbl">risk index</span>
+                  </div>
+                </div>
+                <div class="threat-level" id="threat-level" style="color: var(--green);">SAFE / BENIGN</div>
+                <div class="threat-desc" id="threat-desc">Waiting for file upload...</div>
+              </div>
+              <!-- Threat Alert Warning Container -->
+              <div id="overview-threat-alert-container" style="display: none; margin-top: 15px; width: 100%;"></div>
+              <div class="sep"></div>
+              <div class="threat-bars" id="baseline-models-bars">
+                <!-- Random Forest -->
+                <div class="threat-row">
+                  <span class="threat-type">Random Forest</span>
+                  <div class="tbar-track"><div class="tbar-fill" id="bar-rf" style="width:0%;background:var(--cyan)"></div></div>
+                  <span class="threat-pct-label text-cyan" id="pct-rf">0.0%</span>
+                </div>
+                <!-- CatBoost -->
+                <div class="threat-row">
+                  <span class="threat-type">CatBoost</span>
+                  <div class="tbar-track"><div class="tbar-fill" id="bar-cat" style="width:0%;background:var(--cyan)"></div></div>
+                  <span class="threat-pct-label text-cyan" id="pct-cat">0.0%</span>
+                </div>
+                <!-- XGBoost -->
+                <div class="threat-row">
+                  <span class="threat-type">XGBoost</span>
+                  <div class="tbar-track"><div class="tbar-fill" id="bar-xgb" style="width:0%;background:var(--cyan)"></div></div>
+                  <span class="threat-pct-label text-cyan" id="pct-xgb">0.0%</span>
+                </div>
+                <!-- LightGBM -->
+                <div class="threat-row">
+                  <span class="threat-type">LightGBM</span>
+                  <div class="tbar-track"><div class="tbar-fill" id="bar-lgb" style="width:0%;background:var(--cyan)"></div></div>
+                  <span class="threat-pct-label text-cyan" id="pct-lgb">0.0%</span>
+                </div>
+                <!-- AdaBoost -->
+                <div class="threat-row">
+                  <span class="threat-type">AdaBoost</span>
+                  <div class="tbar-track"><div class="tbar-fill" id="bar-ada" style="width:0%;background:var(--cyan)"></div></div>
+                  <span class="threat-pct-label text-cyan" id="pct-ada">0.0%</span>
+                </div>
+                <!-- Logistic Reg -->
+                <div class="threat-row">
+                  <span class="threat-type">Logistic Reg</span>
+                  <div class="tbar-track"><div class="tbar-fill" id="bar-lr" style="width:0%;background:var(--cyan)"></div></div>
+                  <span class="threat-pct-label text-cyan" id="pct-lr">0.0%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Quick Scan</div>
+              <span class="tag tag-green">Ready</span>
+            </div>
+            <div class="panel-body">
+              <div class="upload-zone" id="upload-zone">
+                <input type="file" id="file-upload" style="display:none;" />
+                <div class="upload-icon">
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="2" y="6" width="24" height="18" rx="2" stroke="#00d2c8" stroke-width="1.3"/><path d="M14 2v14M9 7l5-5 5 5" stroke="#00d2c8" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="upload-text">Drop file to analyze</div>
+                <div class="upload-sub">EXE · JSON · DLL · PDF · up to 512MB</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span class="tag tag-cyan">PE32</span>
+                <span class="tag tag-cyan">Office</span>
+                <span class="tag tag-cyan">Script</span>
+                <span class="tag tag-cyan">Archive</span>
+                <span class="tag tag-cyan">APK</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terminal -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">System Log</div>
+              <span class="flex-center gap-6" style="font-size:9.5px;color:var(--green)"><span class="live-dot" style="width:5px;height:5px"></span>Live</span>
+            </div>
+            <div class="panel-body" style="padding:10px 12px">
+              <div class="terminal" id="system-terminal">
+                <div class="t-line"><span class="t-time" id="init-time">00:00:00</span><span class="t-tag t-info">[SYS]</span><span class="t-msg">MalwareML Pipeline initialized. Waiting for input...</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row: Recent Scans + Training Progress -->
+      <div class="row-2col" style="grid-template-columns: 1fr 340px; margin-bottom: 16px;">
+        <!-- Recent Scans -->
+        <div class="panel" style="display: flex; flex-direction: column;">
+          <div class="panel-header">
+            <div class="panel-title">Recent Scans</div>
+            <span class="tag tag-cyan"><span class="live-dot" style="width:5px;height:5px;margin-right:4px"></span>Live</span>
+            <a href="#" style="margin-left:auto;font-size:10.5px;color:var(--cyan);text-decoration:none">View all →</a>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Type</th>
+                  <th>Verdict</th>
+                  <th>Confidence</th>
+                  <th>Model</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="recent-scans-tbody">
+                <!-- Rows will be added dynamically by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Training Progress -->
         <div class="panel">
           <div class="panel-header">
@@ -530,9 +438,10 @@
             </div>
           </div>
         </div>
-      </div>
       <!-- view-overview end -->
       </div>
+      </div>
+
 
       <!-- ── VIEW: LIVE SCANNER ── -->
       <div id="view-scanner" class="dashboard-view" style="display:none;">
@@ -823,17 +732,17 @@
           <div class="panel-body" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:15px;">
             <div style="background:var(--bg-elevated);padding:14px;border-radius:8px;border:1px solid var(--border);">
               <div style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;">Training Samples</div>
-              <strong style="font-size:20px;color:var(--cyan);font-family:var(--display);display:block;margin-top:4px;">1,200,000</strong>
+              <strong style="font-size:20px;color:var(--cyan);font-family:'Outfit', sans-serif;display:block;margin-top:4px;">1,200,000</strong>
               <span style="font-size:10.5px;color:var(--text-dim);margin-top:2px;display:block;">Balanced: 50% Safe / 50% Malicious</span>
             </div>
             <div style="background:var(--bg-elevated);padding:14px;border-radius:8px;border:1px solid var(--border);">
               <div style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;">Validation Samples</div>
-              <strong style="font-size:20px;color:var(--cyan);font-family:var(--display);display:block;margin-top:4px;">240,000</strong>
+              <strong style="font-size:20px;color:var(--cyan);font-family:'Outfit', sans-serif;display:block;margin-top:4px;">240,000</strong>
               <span style="font-size:10.5px;color:var(--text-dim);margin-top:2px;display:block;">Independent hold-out set</span>
             </div>
             <div style="background:var(--bg-elevated);padding:14px;border-radius:8px;border:1px solid var(--border);">
               <div style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;">Features Vector Layout</div>
-              <strong style="font-size:20px;color:var(--cyan);font-family:var(--display);display:block;margin-top:4px;">2,381 Features</strong>
+              <strong style="font-size:20px;color:var(--cyan);font-family:'Outfit', sans-serif;display:block;margin-top:4px;">2,381 Features</strong>
               <span style="font-size:10.5px;color:var(--text-dim);margin-top:2px;display:block;">Ember raw structural profile mapping</span>
             </div>
           </div>
