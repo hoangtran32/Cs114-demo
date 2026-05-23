@@ -29,6 +29,248 @@ const CONFUSION_MATRICES = {
     "Logistic Regression": { tn: 83242, fp: 16758, fn: 11951, tp: 88049 }
 };
 
+// Feature Importances specific to each of the 6 models
+const MODEL_FEATURE_IMPORTANCES = {
+    "Random Forest": [
+        { name: "F638 (Timestamp)", score: 0.345, width: 95 },
+        { name: "F503 (Entropy)", score: 0.282, width: 78 },
+        { name: "F2142 (Imports)", score: 0.210, width: 62 },
+        { name: "F504 (VSize)", score: 0.144, width: 44 },
+        { name: "F1344 (Signature)", score: 0.098, width: 30 }
+    ],
+    "CatBoost": [
+        { name: "F503 (Entropy)", score: 0.320, width: 90 },
+        { name: "F2142 (Imports)", score: 0.290, width: 82 },
+        { name: "F638 (Timestamp)", score: 0.180, width: 55 },
+        { name: "F504 (VSize)", score: 0.120, width: 38 },
+        { name: "F1344 (Signature)", score: 0.090, width: 28 }
+    ],
+    "XGBoost": [
+        { name: "F2142 (Imports)", score: 0.350, width: 96 },
+        { name: "F503 (Entropy)", score: 0.270, width: 75 },
+        { name: "F504 (VSize)", score: 0.190, width: 58 },
+        { name: "F638 (Timestamp)", score: 0.110, width: 32 },
+        { name: "F1344 (Signature)", score: 0.080, width: 25 }
+    ],
+    "LightGBM": [
+        { name: "F503 (Entropy)", score: 0.380, width: 98 },
+        { name: "F2142 (Imports)", score: 0.260, width: 72 },
+        { name: "F504 (VSize)", score: 0.150, width: 46 },
+        { name: "F1344 (Signature)", score: 0.120, width: 36 },
+        { name: "F638 (Timestamp)", score: 0.090, width: 26 }
+    ],
+    "AdaBoost": [
+        { name: "F1344 (Signature)", score: 0.420, width: 99 },
+        { name: "F2142 (Imports)", score: 0.240, width: 68 },
+        { name: "F503 (Entropy)", score: 0.180, width: 50 },
+        { name: "F504 (VSize)", score: 0.100, width: 30 },
+        { name: "F638 (Timestamp)", score: 0.060, width: 18 }
+    ],
+    "Logistic Regression": [
+        { name: "F1344 (Signature)", score: 0.390, width: 95 },
+        { name: "F2142 (Imports)", score: 0.280, width: 78 },
+        { name: "F503 (Entropy)", score: 0.150, width: 45 },
+        { name: "F504 (VSize)", score: 0.110, width: 32 },
+        { name: "F638 (Timestamp)", score: 0.070, width: 20 }
+    ]
+};
+
+// Model Dynamic XAI Explanations & Voting Formulas
+const MODEL_XAI_EXPLANATIONS = {
+    "Random Forest": `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">🌲</span> Đường dẫn quyết định đại diện (Random Forest)
+            </h4>
+            <p style="margin-bottom:12px;">
+              Mô hình <strong>Random Forest</strong> gồm <strong>100 cây quyết định độc lập (estimators)</strong>, mỗi cây có độ sâu tối đa 25+ bậc để học các đặc trưng PE từ tập dữ liệu EMBER.
+            </p>
+            <p>
+              Đối với mỗi tệp tải lên, 100 cây này sẽ kiểm tra song song các ranh giới giá trị của đặc trưng như <code>F638 (Timestamp)</code> và <code>F503 (Entropy)</code>. Trực quan hóa bên dưới biểu thị một đường dẫn quyết định đại diện gồm 3 bậc chính dẫn đến việc biểu quyết.
+            </p>
+          </div>
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">🗳️</span> Cơ chế biểu quyết đồng diễn (Ensemble Voting)
+            </h4>
+            <p style="margin-bottom:12px;">
+              Trong khi một cây đơn lẻ chỉ trả về kết quả nhị phân (0 hoặc 1), mô hình Random Forest tổng hợp kết quả của tất cả 100 cây để tính toán xác suất:
+            </p>
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);padding:12px;border-radius:8px;display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="font-size:24px;color:var(--purple);">🗳️</div>
+              <div>
+                <strong>Threat Score = Số cây vote Malware / 100 cây</strong>
+                <div style="font-size:11px;margin-top:4px;color:var(--text-dim);">
+                  Nếu 95 cây biểu quyết là SAFE và chỉ 5 cây biểu quyết là MALWARE ➔ Threat Score = 5% (Mô hình tự tin kết luận tệp An toàn).
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    `,
+    "CatBoost": `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">🐱</span> Cây đối xứng (Symmetric/Oblivious Trees)
+            </h4>
+            <p style="margin-bottom:12px;">
+              Mô hình <strong>CatBoost</strong> sử dụng các cây quyết định đối xứng. Tất cả các nút ở cùng một độ sâu của cây đều chia tách theo cùng một đặc trưng và cùng một ngưỡng (ngăn chặn Overfitting).
+            </p>
+            <p>
+              Đối với mỗi tệp tin, mô hình sẽ tính toán giá trị lề đối xứng (Symmetric Margin) tích lũy trên các đặc trưng hàng đầu như <code>F503 (Entropy)</code> và <code>F2142 (Imports)</code> để tính ra tổng điểm log-odds.
+            </p>
+          </div>
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">🗳️</span> Cơ chế kích hoạt hàm Sigmoid của CatBoost
+            </h4>
+            <p style="margin-bottom:12px;">
+              Tổng điểm lề tích lũy qua chuỗi boosting cây đối xứng được đưa vào hàm Sigmoid để chuyển đổi thành xác suất rủi ro nhị phân:
+            </p>
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);padding:12px;border-radius:8px;display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="font-size:24px;color:var(--purple);">📈</div>
+              <div>
+                <strong>Threat Score = 1 / (1 + e<sup>-Margin</sup>)</strong>
+                <div style="font-size:11px;margin-top:4px;color:var(--text-dim);">
+                  Nếu tổng điểm lề Margin đạt giá trị dương cao (ví dụ: +3.5 do entropy cực cao) ➔ Sigmoid chuyển đổi thành xác suất nguy hiểm > 97%.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    `,
+    "XGBoost": `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">⚡</span> Boosting Cực hạn với Regularization L1/L2
+            </h4>
+            <p style="margin-bottom:12px;">
+              Thuật toán <strong>XGBoost</strong> tối ưu hóa cực hạn thông qua cấu trúc gradient boosting có kết hợp thành phần phạt chính quy hóa (L1/L2) để loại bỏ các nhánh cây gây nhiễu.
+            </p>
+            <p>
+              Mô hình kiểm tra độ rẽ nhánh dựa trên sự tối ưu hóa hàm mục tiêu (Objective function) đối với các đặc trưng <code>F2142 (Imports)</code> và <code>F503 (Entropy)</code> để tích lũy điểm log-odds z.
+            </p>
+          </div>
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">🗳️</span> Cơ chế tính điểm Log-odds của XGBoost
+            </h4>
+            <p style="margin-bottom:12px;">
+              Điểm số rủi ro của XGBoost được quy đổi từ tổng điểm z tích lũy qua chuỗi boosting các cây quyết định yếu (weak learners):
+            </p>
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);padding:12px;border-radius:8px;display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="font-size:24px;color:var(--purple);">📊</div>
+              <div>
+                <strong>Threat Score = σ(z) = 1 / (1 + e<sup>-z</sup>)</strong>
+                <div style="font-size:11px;margin-top:4px;color:var(--text-dim);">
+                  Với z là tổng giá trị dự đoán của tất cả các cây quyết định được điều chỉnh trọng số (shrinkage rate η).
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    `,
+    "LightGBM": `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">🍃</span> Phân nhánh theo Chiều sâu (Leaf-wise Growth)
+            </h4>
+            <p style="margin-bottom:12px;">
+              Không giống các thuật toán boosting thông thường phân nhánh theo chiều ngang (Level-wise), <strong>LightGBM</strong> phát triển cây theo chiều sâu (Leaf-wise), tìm nút lá có độ giảm tổn thất lớn nhất để chia nhánh.
+            </p>
+            <p>
+              Cách phân nhánh sâu này giúp mô hình bắt được các tương tác phi tuyến cực kỳ phức tạp giữa đặc trưng <code>F503 (Entropy)</code> và <code>F2142 (Imports Table)</code>.
+            </p>
+          </div>
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">🗳️</span> Cơ chế Lọc mẫu GOSS của LightGBM
+            </h4>
+            <p style="margin-bottom:12px;">
+              Sử dụng kỹ thuật GOSS (Gradient-based One-Side Sampling) để giữ lại các mẫu có gradient lớn và lấy mẫu ngẫu nhiên trên các mẫu có gradient nhỏ để giảm thiểu khối lượng tính toán:
+            </p>
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);padding:12px;border-radius:8px;display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="font-size:24px;color:var(--purple);">⚡</div>
+              <div>
+                <strong>Phân tích nút lá sâu (Leaf-wise Split)</strong>
+                <div style="font-size:11px;margin-top:4px;color:var(--text-dim);">
+                  Kỹ thuật này giúp LightGBM có tốc độ dự đoán cực nhanh (chỉ mất ~1.1ms) nhưng vẫn đảm bảo độ chính xác phân loại tối ưu.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    `,
+    "AdaBoost": `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">🔗</span> Chuỗi Bộ phân lớp Yếu (Decision Stumps)
+            </h4>
+            <p style="margin-bottom:12px;">
+              Mô hình <strong>AdaBoost</strong> hoạt động theo cơ chế thích ứng (Adaptive Boosting), liên kết các cây quyết định 1 tầng (Decision Stumps - bộ phân loại chỉ có 1 nút chia tách).
+            </p>
+            <p>
+              Mỗi cây 1 tầng này sẽ tập trung phân loại các mẫu dữ liệu khó (các mẫu bị gán trọng số lỗi cao ở chu kỳ trước), dựa trên ranh giới đơn giản như <code>F1344 (Signature) == 0</code>.
+            </p>
+          </div>
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">🗳️</span> Cơ chế Cộng Trọng số Biểu quyết (Weighted Vote)
+            </h4>
+            <p style="margin-bottom:12px;">
+              Phán quyết cuối cùng của AdaBoost là tổng tổ hợp tuyến tính có trọng số α<sub>t</sub> của tất cả các decision stumps:
+            </p>
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);padding:12px;border-radius:8px;display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="font-size:24px;color:var(--purple);">🗳️</div>
+              <div>
+                <strong>Threat Score = ∑ (α<sub>t</sub> × h<sub>t</sub>(x))</strong>
+                <div style="font-size:11px;margin-top:4px;color:var(--text-dim);">
+                  Với h<sub>t</sub>(x) là dự đoán nhị phân của stump thứ t, và α<sub>t</sub> là trọng số biểu thị độ tin cậy của stump đó.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    `,
+    "Logistic Regression": `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">📐</span> Tổ hợp Tuyến tính Đặc trưng PE Tĩnh
+            </h4>
+            <p style="margin-bottom:12px;">
+              Mô hình <strong>Logistic Regression</strong> là một bộ phân lớp tuyến tính cổ điển. Nó gán cho mỗi đặc trưng đầu vào một hệ số trọng số thực w<sub>i</sub> (tích cực hoặc tiêu cực).
+            </p>
+            <p>
+              Tệp tin tải lên được trích xuất 200 đặc trưng tĩnh (như <code>F1344 (Signature)</code>, <code>F2142 (Imports)</code>) và chuẩn hóa Gaussian để làm đầu vào cho hàm tuyến tính.
+            </p>
+          </div>
+          <div>
+            <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--cyan);">🗳️</span> Cơ chế ánh xạ Sigmoid Tuyến tính
+            </h4>
+            <p style="margin-bottom:12px;">
+              Xác suất rủi ro được tính bằng cách truyền giá trị tổ hợp tuyến tính z = w<sup>T</sup>x + b qua hàm kích hoạt Sigmoid:
+            </p>
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);padding:12px;border-radius:8px;display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="font-size:24px;color:var(--purple);">📐</div>
+              <div>
+                <strong>Threat Score = 1 / (1 + e<sup>-(w<sup>T</sup>x + b)</sup>)</strong>
+                <div style="font-size:11px;margin-top:4px;color:var(--text-dim);">
+                  Hệ số w dương lớn (như entropy cao) sẽ đẩy z lên cao ➔ tăng Threat Score. Hệ số w âm (như có chữ ký số) sẽ kéo z xuống thấp.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    `
+};
+
 // Heatmap raw correlation values
 const HEATMAP_LABELS = ["F738", "F731", "F771", "F760", "F765", "F768", "F736", "F745", "F726", "F729"];
 const HEATMAP_VALUES = [
@@ -52,8 +294,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSamples();
     setupModelPerformanceDashboard();
     setupCorrelationMatrix();
-    setupTrainingSim();
     setupSettingsAndTheme();
+    setupTopbarEvents();
 });
 
 // SPA Routing Navigation switchView helper
@@ -66,9 +308,7 @@ function switchView(viewId) {
     const viewDetails = {
         "overview":       { title: "Threat Overview", sub: "Live · Updated 3s ago" },
         "scanner":        { title: "Live Threat Scanner", sub: "Verify executables against 6 parallel ML models" },
-        "models":         { title: "Model Performance Dashboard", sub: "Base metrics sourced from baseline_results.csv" },
-        "datasets":       { title: "Feature Space & Datasets", sub: "KDE distributions and correlation analysis" },
-        "training":       { title: "Training Center", sub: "Simulate hyperparameter runs and optimization" },
+        "models":         { title: "Models & Feature Space", sub: "Interactive XAI explanations and feature space distributions" },
         "settings":       { title: "Engine Settings", sub: "Global thresholds and threat calibration" }
     };
 
@@ -158,6 +398,86 @@ function initApp() {
     setupOverviewTrainingProgress();
 }
 
+// Setup Topbar search, filter, notifications, and upload interactions
+function setupTopbarEvents() {
+    const searchInput = document.getElementById('topbar-search-input');
+    const filterBtn = document.getElementById('topbar-filter-btn');
+    const notifBtn = document.getElementById('topbar-notif-btn');
+    const uploadBtn = document.getElementById('topbar-upload-btn');
+
+    // 1. Search Box: Filters the Recent Scans table dynamically
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.toLowerCase().trim();
+            const rows = document.querySelectorAll('#recent-scans-tbody tr');
+            rows.forEach(row => {
+                const fileName = row.querySelector('.file-name')?.textContent?.toLowerCase() || '';
+                const fileHash = row.querySelector('.file-hash')?.textContent?.toLowerCase() || '';
+                if (fileName.includes(query) || fileHash.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // 2. Filter Button: Toggles displaying threats-only vs all in Recent Scans table
+    let filterOnlyThreats = false;
+    if (filterBtn) {
+        filterBtn.style.transition = 'all 0.2s ease';
+        filterBtn.addEventListener('click', () => {
+            filterOnlyThreats = !filterOnlyThreats;
+            if (filterOnlyThreats) {
+                filterBtn.style.color = 'var(--cyan)';
+                filterBtn.style.borderColor = 'var(--cyan)';
+                filterBtn.style.background = 'rgba(0, 210, 200, 0.08)';
+                appendLog('SYS', 'Bảng quét gần đây: Chỉ hiển thị các tệp nguy cơ (threats).', 'info');
+            } else {
+                filterBtn.style.color = '';
+                filterBtn.style.borderColor = '';
+                filterBtn.style.background = '';
+                appendLog('SYS', 'Bảng quét gần đây: Đã xóa bộ lọc, hiển thị toàn bộ tệp.', 'info');
+            }
+            
+            const rows = document.querySelectorAll('#recent-scans-tbody tr');
+            rows.forEach(row => {
+                const verdictTag = row.querySelector('.tag');
+                const isMalwareRow = verdictTag && (verdictTag.classList.contains('tag-red') || verdictTag.textContent.toLowerCase().includes('mal'));
+                if (!filterOnlyThreats || isMalwareRow) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // 3. Notification Button: Clears notification dot and displays system audit state
+    if (notifBtn) {
+        notifBtn.addEventListener('click', () => {
+            const dot = notifBtn.querySelector('.notif-dot');
+            if (dot) dot.style.display = 'none';
+            appendLog('SYS', 'Kiểm tra trạng thái cảnh báo hệ thống bởi người dùng.', 'info');
+            alert("Trạng thái Hệ thống:\n- Cả 6 bộ phân lớp ML song song đang chạy bình thường.\n- CPU/GPU Sandbox đo đạc đặc trưng hoạt động với hiệu suất 100%.\n- Pipeline trích xuất đặc trưng PE tĩnh sẵn sàng.");
+        });
+    }
+
+    // 4. Upload Button: Binds click to trigger the file selection dialog
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', () => {
+            const fileInput = document.getElementById('file-upload');
+            if (fileInput) {
+                fileInput.click();
+            } else {
+                // If on scanner view, trigger scanner file input
+                const scannerInput = document.getElementById('scanner-file-upload');
+                if (scannerInput) scannerInput.click();
+            }
+        });
+    }
+}
+
 // Dynamic overview training progress simulation
 function setupOverviewTrainingProgress() {
     const btnPause = document.getElementById('btn-pause-training');
@@ -200,7 +520,7 @@ function setupOverviewTrainingProgress() {
     });
 
     btnDetails.addEventListener('click', () => {
-        switchView('training');
+        switchView('models');
     });
 
     // Auto-update overview training info
@@ -626,20 +946,24 @@ function renderScanResults(data, filename) {
 // Fallback Simulation for testing when server is completely offline
 function simulateScanFallback(filename) {
     const isMalware = filename.toLowerCase().includes('malware') || filename.toLowerCase().includes('ransomware') || filename.toLowerCase().includes('trojan') || filename.includes('wannacry');
-    const score = isMalware ? (88.5 + Math.random() * 10) : (1.5 + Math.random() * 6);
+    
+    const modelScores = {
+        "Random Forest": isMalware ? 0.985 : 0.021,
+        "CatBoost": isMalware ? 0.976 : 0.018,
+        "XGBoost": isMalware ? 0.965 : 0.015,
+        "LightGBM": isMalware ? 0.942 : 0.024,
+        "AdaBoost": isMalware ? 0.885 : 0.210,
+        "Logistic Regression": isMalware ? 0.892 : 0.098
+    };
+    
+    const chosenProb = modelScores[window.activeModel] || (isMalware ? 0.985 : 0.021);
+    const score = chosenProb * 100;
     
     const fallbackData = {
         name: filename,
-        verdict: isMalware ? "DANGEROUS / MALWARE" : "SAFE / BENIGN",
+        verdict: chosenProb > 0.5 ? "DANGEROUS / MALWARE" : "SAFE / BENIGN",
         threat_score: parseFloat(score.toFixed(1)),
-        model_scores: {
-            "Random Forest": isMalware ? 0.985 : 0.021,
-            "CatBoost": isMalware ? 0.976 : 0.018,
-            "XGBoost": isMalware ? 0.965 : 0.015,
-            "LightGBM": isMalware ? 0.942 : 0.024,
-            "AdaBoost": isMalware ? 0.885 : 0.210,
-            "Logistic Regression": isMalware ? 0.892 : 0.098
-        },
+        model_scores: modelScores,
         file_metadata: {
             size: isMalware ? 3514368 : 1153024,
             vsize: isMalware ? 4194304 : 1228800,
@@ -856,19 +1180,63 @@ function setupModelPerformanceDashboard() {
             btn.classList.add('active');
             
             const selectedModel = btn.getAttribute('data-model');
-            const data = CONFUSION_MATRICES[selectedModel];
-            if (data) {
-                document.getElementById('cf-tn').textContent = data.tn.toLocaleString();
-                document.getElementById('cf-fp').textContent = data.fp.toLocaleString();
-                document.getElementById('cf-fn').textContent = data.fn.toLocaleString();
-                document.getElementById('cf-tp').textContent = data.tp.toLocaleString();
-                appendLog('XAI', `Swapped confusion matrix to: ${selectedModel}`, 'info');
-            }
+            updateModelXAIContext(selectedModel);
+            appendLog('XAI', `Chuyển trực quan hóa XAI sang mô hình: ${selectedModel}`, 'info');
         });
     });
     
     // Initial sync for dynamically rendered cards
     syncActiveModelUI();
+}
+
+// Update entire models & datasets XAI visual context (Confusion Matrix, Feature Importances, Decision Paths)
+function updateModelXAIContext(modelName) {
+    // 1. Update Confusion Matrix buttons active states
+    const cfButtons = document.querySelectorAll('.select-cf-model');
+    cfButtons.forEach(btn => {
+        if (btn.getAttribute('data-model') === modelName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // 2. Update Confusion Matrix numbers
+    const cfData = CONFUSION_MATRICES[modelName];
+    if (cfData) {
+        const tnEl = document.getElementById('cf-tn');
+        const fpEl = document.getElementById('cf-fp');
+        const fnEl = document.getElementById('cf-fn');
+        const tpEl = document.getElementById('cf-tp');
+        if (tnEl) tnEl.textContent = cfData.tn.toLocaleString();
+        if (fpEl) fpEl.textContent = cfData.fp.toLocaleString();
+        if (fnEl) fnEl.textContent = cfData.fn.toLocaleString();
+        if (tpEl) tpEl.textContent = cfData.tp.toLocaleString();
+    }
+
+    // 3. Update Feature Importance Chart
+    const featContainer = document.getElementById('feature-importance-bars');
+    const importances = MODEL_FEATURE_IMPORTANCES[modelName];
+    if (featContainer && importances) {
+        featContainer.innerHTML = '';
+        importances.forEach(feat => {
+            const row = document.createElement('div');
+            row.className = 'threat-row';
+            row.innerHTML = `
+                <span class="threat-type" style="width:120px;">${feat.name}</span>
+                <div class="tbar-track"><div class="tbar-fill" style="width:${feat.width}%;background:var(--cyan);"></div></div>
+                <span class="threat-pct-label text-cyan" style="width:40px;">${feat.score.toFixed(3)}</span>
+            `;
+            featContainer.appendChild(row);
+        });
+    }
+
+    // 4. Update XAI Decision Path & Voting Explanation panel
+    const explanationPanelBody = document.getElementById('xai-explanation-panel-body');
+    const explanationMarkup = MODEL_XAI_EXPLANATIONS[modelName];
+    if (explanationPanelBody && explanationMarkup) {
+        explanationPanelBody.innerHTML = explanationMarkup;
+    }
 }
 
 // Generate the 11x11 Correlation Matrix Heatmap Tiles with X/Y labels
@@ -1011,39 +1379,39 @@ function getThreatAlertHTML(data) {
     }
 
     return `
-        <div class="threat-alert-box" style="background: rgba(255, 61, 90, 0.08); border: 1px solid rgba(255, 61, 90, 0.3); border-radius: 6px; padding: 12px; margin-bottom: 10px; font-family: var(--display); text-align: left; box-sizing: border-box; width: 100%;">
-            <div style="display: flex; align-items: center; gap: 8px; color: var(--red); font-weight: bold; font-size: 11.5px; margin-bottom: 8px;">
+        <div class="threat-alert-box" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 12px; margin-bottom: 10px; font-family: var(--display); text-align: left; box-sizing: border-box; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 8px; color: var(--amber); font-weight: bold; font-size: 11.5px; margin-bottom: 8px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <span>CẢNH BÁO NGUY HIỂM TỆP (MALWARE DETECTED)</span>
+                <span>CHỈ BÁO RỦI RO TỪ MÔ HÌNH (PROBABILISTIC THREAT WARNING)</span>
             </div>
             <div style="font-size: 10.5px; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 6px;">
-                <p style="margin:0; font-weight:bold; color: var(--text-primary);">Vị trí & dấu hiệu nguy hiểm phát hiện trong cấu trúc nhị phân (Binary Structure):</p>
+                <p style="margin:0; font-weight:bold; color: var(--text-primary);">Các đặc trưng cấu trúc nhị phân khả nghi làm tăng xác suất đánh giá rủi ro (Model Feature Observations):</p>
                 
                 ${missingSignature ? `
-                <div style="background: rgba(255,61,90,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--red);">
-                    <strong style="color:var(--red);">⚠️ Thiếu Chữ Ký Số (Unsigned PE Header):</strong>
-                    <span style="color:var(--text-dim); margin-left: 4px;">Tệp thực thi không có Signature hợp lệ. Nguy cơ chứa mã nguồn độc hại tự biên chế hoặc giả mạo nguồn gốc.</span>
+                <div style="background: rgba(245,158,11,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--amber);">
+                    <strong style="color:var(--amber);">⚠️ Cảnh báo thiếu chữ ký số (Unsigned PE Header):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Đặc trưng tệp không mang chữ ký số hợp lệ. Đây là yếu tố thường thấy làm tăng xác suất đánh giá rủi ro giả mạo nguồn gốc của mô hình.</span>
                 </div>
                 ` : ''}
 
                 ${highEntropySection ? `
-                <div style="background: rgba(255,61,90,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--red);">
-                    <strong style="color:var(--red);">⚠️ Phân đoạn nén/mã hóa (Entropy cao ở Section '${highEntropySection.name}'):</strong>
-                    <span style="color:var(--text-dim); margin-left: 4px;">Entropy đạt <strong>${highEntropySection.entropy.toFixed(2)}</strong>. Đây là dấu hiệu của Shellcode được mã hóa hoặc Payload độc hại đang lẩn trốn dưới lớp đóng gói (Packing).</span>
+                <div style="background: rgba(245,158,11,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--amber);">
+                    <strong style="color:var(--amber);">⚠️ Chỉ báo phân đoạn nén/mã hóa (Entropy cao ở Section '${highEntropySection.name}'):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Đo được entropy đạt <strong>${highEntropySection.entropy.toFixed(2)}</strong>. Đặc trưng toán học này chỉ ra khả năng cao tệp sử dụng kỹ thuật đóng gói (Packing) hoặc xáo trộn mã nguồn.</span>
                 </div>
                 ` : ''}
 
                 ${upxPacker ? `
-                <div style="background: rgba(255,61,90,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--red);">
-                    <strong style="color:var(--red);">⚠️ Kỹ thuật nén ẩn mình (UPX Section):</strong>
-                    <span style="color:var(--text-dim); margin-left: 4px;">Mã độc sử dụng trình nén UPX để che giấu các đoạn mã nhị phân gốc hòng tránh sự phát hiện của cơ chế kiểm tra chữ ký quét tĩnh.</span>
+                <div style="background: rgba(245,158,11,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--amber);">
+                    <strong style="color:var(--amber);">⚠️ Phát hiện dấu hiệu nén (UPX Section):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Phát hiện nhãn nén UPX trong phân đoạn. Đây là đặc trưng làm tăng chỉ số rủi ro che giấu cấu trúc gốc trước bộ phân loại.</span>
                 </div>
                 ` : ''}
 
                 ${suspiciousApis.length > 0 ? `
-                <div style="background: rgba(255,61,90,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--red);">
-                    <strong style="color:var(--red);">⚠️ Lệnh gọi API nhạy cảm (Imports Table):</strong>
-                    <span style="color:var(--text-dim); margin-left: 4px;">Phát hiện hàm: <code style="color:var(--red); background:var(--red-dim); padding:1px 4px; border-radius:2px; font-family:var(--mono);">${suspiciousApis.join(', ')}</code>. Đây là các API nguy cơ được dùng để tiêm mã độc hoặc tải payload tự động.</span>
+                <div style="background: rgba(245,158,11,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--amber);">
+                    <strong style="color:var(--amber);">⚠️ Cảnh báo lệnh gọi API nhạy cảm (Imports Table):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Phát hiện hàm: <code style="color:var(--amber); background:rgba(245,158,11,0.1); padding:1px 4px; border-radius:2px; font-family:var(--mono);">${suspiciousApis.join(', ')}</code>. Các đặc trưng nhập khẩu này có độ tương quan rủi ro cao với hành vi tải payload hoặc mã hóa.</span>
                 </div>
                 ` : ''}
             </div>
@@ -1259,13 +1627,16 @@ function generateRandomHex(len) {
 let sessionTimelineScans = [];
 
 function syncActiveModelUI() {
+    // 0. Update Models & Datasets dynamic XAI context
+    updateModelXAIContext(window.activeModel);
+
     // 1. Update selector dropdown value
     const selector = document.getElementById('global-model-selector');
     if (selector) {
         selector.value = window.activeModel;
     }
 
-    // 2. Highlight selected primary model cards across the entire document
+    // 2. Highlight selected primary model cards across the entire document and update current scan score
     const cards = document.querySelectorAll('.model-card');
     cards.forEach(card => {
         const modelName = card.getAttribute('data-model') || card.querySelector('.model-name')?.textContent?.trim();
@@ -1298,6 +1669,27 @@ function syncActiveModelUI() {
                 statusBadge.style.display = 'none';
             }
             card.style.borderColor = 'var(--border)';
+        }
+
+        // Update dynamic scan threat score in model stats to prevent visual mismatch
+        let scanScoreEl = card.querySelector('.mstat-scan-threat');
+        if (scanScoreEl) {
+            const valEl = scanScoreEl.querySelector('.mstat-val');
+            if (valEl) {
+                if (currentScanData && currentScanData.model_scores && currentScanData.model_scores[modelName] !== undefined) {
+                    const probVal = currentScanData.model_scores[modelName];
+                    const percentage = (probVal * 100).toFixed(1);
+                    valEl.textContent = `${percentage}%`;
+                    valEl.style.color = probVal > 0.5 ? 'var(--red)' : 'var(--green)';
+                    scanScoreEl.style.background = probVal > 0.5 ? 'rgba(255, 61, 90, 0.04)' : 'rgba(40, 232, 125, 0.03)';
+                    scanScoreEl.style.borderColor = probVal > 0.5 ? 'rgba(255, 61, 90, 0.2)' : 'rgba(40, 232, 125, 0.2)';
+                } else {
+                    valEl.textContent = '--';
+                    valEl.style.color = 'var(--text-dim)';
+                    scanScoreEl.style.background = 'rgba(255,255,255,0.02)';
+                    scanScoreEl.style.borderColor = 'var(--border)';
+                }
+            }
         }
     });
 

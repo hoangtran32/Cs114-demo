@@ -44,16 +44,8 @@
       <p class="nav-label">ML Platform</p>
       <a class="nav-item" href="#" data-view="models">
         <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="3" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.1"/><path d="M5 9.5V6l2 2 2-3.5V9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.5 5.5h12" stroke="currentColor" stroke-width="1.1"/></svg>
-        Models
+        Models & Datasets
         <span class="nav-badge ok">6</span>
-      </a>
-      <a class="nav-item" href="#" data-view="datasets">
-        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><circle cx="4" cy="7.5" r="2.5" stroke="currentColor" stroke-width="1.1"/><circle cx="11.5" cy="4" r="2" stroke="currentColor" stroke-width="1.1"/><circle cx="11.5" cy="11" r="2" stroke="currentColor" stroke-width="1.1"/><path d="M6.5 7.5H9.5" stroke="currentColor" stroke-width="1.1"/><path d="M6.2 6.2L9.5 4.7" stroke="currentColor" stroke-width="1.1"/><path d="M6.2 8.8L9.5 10.3" stroke="currentColor" stroke-width="1.1"/></svg>
-        Datasets
-      </a>
-      <a class="nav-item" href="#" data-view="training">
-        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><path d="M2 3.5h11M2 7.5h8M2 11.5h5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
-        Training Runs
       </a>
     </div>
 
@@ -97,16 +89,16 @@
         </select>
         <div class="search-box">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="5" cy="5" r="3.5" stroke="#3d5268" stroke-width="1.2"/><path d="M8 8l2 2" stroke="#3d5268" stroke-width="1.2" stroke-linecap="round"/></svg>
-          <input type="text" placeholder="Search hash, filename...">
+          <input type="text" id="topbar-search-input" placeholder="Search hash, filename...">
         </div>
-        <button class="icon-btn">
+        <button class="icon-btn" id="topbar-filter-btn" title="Toggle Threats Only">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M4 7h6M6 10h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
         </button>
-        <button class="icon-btn">
+        <button class="icon-btn" id="topbar-notif-btn" title="Notifications / Audit State">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
           <div class="notif-dot"></div>
         </button>
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" id="topbar-upload-btn">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M1 10h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Upload Sample
         </button>
@@ -165,103 +157,169 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
               <!-- Random Forest -->
               <div class="model-card" data-model="Random Forest">
-                <div class="flex-center gap-8 mb-10">
+                <div class="flex-center gap-8 mb-6">
                   <div class="model-name">Random Forest</div>
                   <span class="tag tag-green model-active-badge" style="margin-left:auto">Active</span>
                 </div>
                 <div class="model-type">Ensemble · Decision Trees</div>
-                <div class="model-stats">
-                  <div class="mstat"><div class="mstat-val">97.36%</div><div class="mstat-lbl">Accuracy</div></div>
-                  <div class="mstat"><div class="mstat-val" style="color:var(--green)">0.973</div><div class="mstat-lbl">F1 Score</div></div>
+                
+                <!-- Live Scan Threat Spotlight -->
+                <div class="mstat-scan-threat" style="text-align: center; margin: 8px 0 12px 0; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 6px; border: 1px dashed var(--border); transition: all 0.3s ease;">
+                  <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Current File Threat</div>
+                  <div class="mstat-val" style="font-size: 26px; font-weight: 800; color: var(--text-dim); line-height: 1.1;">--</div>
                 </div>
-                <div class="model-footer">
+
+                <!-- Baseline Evaluation Metrics (Abbreviated & Smaller) -->
+                <div class="model-stats" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-primary);">97.4%</div><div class="mstat-lbl" style="font-size: 7.5px;">ACC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">97.8%</div><div class="mstat-lbl" style="font-size: 7.5px;">PRC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">96.9%</div><div class="mstat-lbl" style="font-size: 7.5px;">RCL</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--green);">0.973</div><div class="mstat-lbl" style="font-size: 7.5px;">F1</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--cyan);">0.997</div><div class="mstat-lbl" style="font-size: 7.5px;">AUC</div></div>
+                </div>
+                <div class="model-footer" style="margin-top: 8px; padding-top: 8px;">
                   <span class="tag tag-cyan model-status-badge">SELECTED PRIMARY</span>
-                  <span class="text-dim" style="font-size:9.5px;margin-left:auto">↓ 2.4ms</span>
+                  <span class="text-dim" style="font-size: 9.5px; margin-left: auto;">↓ 2.4ms</span>
                 </div>
               </div>
 
               <!-- CatBoost -->
               <div class="model-card" data-model="CatBoost">
-                <div class="flex-center gap-8 mb-10">
+                <div class="flex-center gap-8 mb-6">
                   <div class="model-name">CatBoost</div>
                   <span class="tag tag-green model-active-badge" style="margin-left:auto">Active</span>
                 </div>
                 <div class="model-type">Gradient Boosting · Symmetric</div>
-                <div class="model-stats">
-                  <div class="mstat"><div class="mstat-val">96.84%</div><div class="mstat-lbl">Accuracy</div></div>
-                  <div class="mstat"><div class="mstat-val" style="color:var(--green)">0.968</div><div class="mstat-lbl">F1 Score</div></div>
+                
+                <!-- Live Scan Threat Spotlight -->
+                <div class="mstat-scan-threat" style="text-align: center; margin: 8px 0 12px 0; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 6px; border: 1px dashed var(--border); transition: all 0.3s ease;">
+                  <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Current File Threat</div>
+                  <div class="mstat-val" style="font-size: 26px; font-weight: 800; color: var(--text-dim); line-height: 1.1;">--</div>
                 </div>
-                <div class="model-footer">
+
+                <!-- Baseline Evaluation Metrics -->
+                <div class="model-stats" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-primary);">96.8%</div><div class="mstat-lbl" style="font-size: 7.5px;">ACC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">97.0%</div><div class="mstat-lbl" style="font-size: 7.5px;">PRC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">96.7%</div><div class="mstat-lbl" style="font-size: 7.5px;">RCL</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--green);">0.968</div><div class="mstat-lbl" style="font-size: 7.5px;">F1</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--cyan);">0.995</div><div class="mstat-lbl" style="font-size: 7.5px;">AUC</div></div>
+                </div>
+                <div class="model-footer" style="margin-top: 8px; padding-top: 8px;">
                   <span class="tag tag-cyan model-status-badge" style="display:none;">SELECTED PRIMARY</span>
-                  <span class="text-dim" style="font-size:9.5px;margin-left:auto">↓ 3.8ms</span>
+                  <span class="text-dim" style="font-size: 9.5px; margin-left: auto;">↓ 3.8ms</span>
                 </div>
               </div>
 
               <!-- XGBoost -->
               <div class="model-card" data-model="XGBoost">
-                <div class="flex-center gap-8 mb-10">
+                <div class="flex-center gap-8 mb-6">
                   <div class="model-name">XGBoost</div>
                   <span class="tag tag-green model-active-badge" style="margin-left:auto">Active</span>
                 </div>
                 <div class="model-type">Gradient Boosting · Regularized</div>
-                <div class="model-stats">
-                  <div class="mstat"><div class="mstat-val">96.05%</div><div class="mstat-lbl">Accuracy</div></div>
-                  <div class="mstat"><div class="mstat-val" style="color:var(--green)">0.961</div><div class="mstat-lbl">F1 Score</div></div>
+                
+                <!-- Live Scan Threat Spotlight -->
+                <div class="mstat-scan-threat" style="text-align: center; margin: 8px 0 12px 0; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 6px; border: 1px dashed var(--border); transition: all 0.3s ease;">
+                  <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Current File Threat</div>
+                  <div class="mstat-val" style="font-size: 26px; font-weight: 800; color: var(--text-dim); line-height: 1.1;">--</div>
                 </div>
-                <div class="model-footer">
+
+                <!-- Baseline Evaluation Metrics -->
+                <div class="model-stats" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-primary);">96.1%</div><div class="mstat-lbl" style="font-size: 7.5px;">ACC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">96.0%</div><div class="mstat-lbl" style="font-size: 7.5px;">PRC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">96.1%</div><div class="mstat-lbl" style="font-size: 7.5px;">RCL</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--green);">0.961</div><div class="mstat-lbl" style="font-size: 7.5px;">F1</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--cyan);">0.993</div><div class="mstat-lbl" style="font-size: 7.5px;">AUC</div></div>
+                </div>
+                <div class="model-footer" style="margin-top: 8px; padding-top: 8px;">
                   <span class="tag tag-cyan model-status-badge" style="display:none;">SELECTED PRIMARY</span>
-                  <span class="text-dim" style="font-size:9.5px;margin-left:auto">↓ 1.5ms</span>
+                  <span class="text-dim" style="font-size: 9.5px; margin-left: auto;">↓ 1.5ms</span>
                 </div>
               </div>
 
               <!-- LightGBM -->
               <div class="model-card" data-model="LightGBM">
-                <div class="flex-center gap-8 mb-10">
+                <div class="flex-center gap-8 mb-6">
                   <div class="model-name">LightGBM</div>
                   <span class="tag tag-green model-active-badge" style="margin-left:auto">Active</span>
                 </div>
                 <div class="model-type">Gradient Boosting · Leaf-wise</div>
-                <div class="model-stats">
-                  <div class="mstat"><div class="mstat-val">94.65%</div><div class="mstat-lbl">Accuracy</div></div>
-                  <div class="mstat"><div class="mstat-val" style="color:var(--green)">0.947</div><div class="mstat-lbl">F1 Score</div></div>
+                
+                <!-- Live Scan Threat Spotlight -->
+                <div class="mstat-scan-threat" style="text-align: center; margin: 8px 0 12px 0; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 6px; border: 1px dashed var(--border); transition: all 0.3s ease;">
+                  <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Current File Threat</div>
+                  <div class="mstat-val" style="font-size: 26px; font-weight: 800; color: var(--text-dim); line-height: 1.1;">--</div>
                 </div>
-                <div class="model-footer">
+
+                <!-- Baseline Evaluation Metrics -->
+                <div class="model-stats" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-primary);">94.7%</div><div class="mstat-lbl" style="font-size: 7.5px;">ACC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">94.5%</div><div class="mstat-lbl" style="font-size: 7.5px;">PRC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">94.8%</div><div class="mstat-lbl" style="font-size: 7.5px;">RCL</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--green);">0.947</div><div class="mstat-lbl" style="font-size: 7.5px;">F1</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--cyan);">0.988</div><div class="mstat-lbl" style="font-size: 7.5px;">AUC</div></div>
+                </div>
+                <div class="model-footer" style="margin-top: 8px; padding-top: 8px;">
                   <span class="tag tag-cyan model-status-badge" style="display:none;">SELECTED PRIMARY</span>
-                  <span class="text-dim" style="font-size:9.5px;margin-left:auto">↓ 1.1ms</span>
+                  <span class="text-dim" style="font-size: 9.5px; margin-left: auto;">↓ 1.1ms</span>
                 </div>
               </div>
 
               <!-- AdaBoost -->
               <div class="model-card" data-model="AdaBoost">
-                <div class="flex-center gap-8 mb-10">
+                <div class="flex-center gap-8 mb-6">
                   <div class="model-name">AdaBoost</div>
                   <span class="tag tag-green model-active-badge" style="margin-left:auto">Active</span>
                 </div>
                 <div class="model-type">Adaptive Boosting · Decision Stumps</div>
-                <div class="model-stats">
-                  <div class="mstat"><div class="mstat-val">86.53%</div><div class="mstat-lbl">Accuracy</div></div>
-                  <div class="mstat"><div class="mstat-val" style="color:var(--green)">0.867</div><div class="mstat-lbl">F1 Score</div></div>
+                
+                <!-- Live Scan Threat Spotlight -->
+                <div class="mstat-scan-threat" style="text-align: center; margin: 8px 0 12px 0; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 6px; border: 1px dashed var(--border); transition: all 0.3s ease;">
+                  <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Current File Threat</div>
+                  <div class="mstat-val" style="font-size: 26px; font-weight: 800; color: var(--text-dim); line-height: 1.1;">--</div>
                 </div>
-                <div class="model-footer">
+
+                <!-- Baseline Evaluation Metrics -->
+                <div class="model-stats" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-primary);">86.5%</div><div class="mstat-lbl" style="font-size: 7.5px;">ACC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">85.5%</div><div class="mstat-lbl" style="font-size: 7.5px;">PRC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">88.0%</div><div class="mstat-lbl" style="font-size: 7.5px;">RCL</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--green);">0.867</div><div class="mstat-lbl" style="font-size: 7.5px;">F1</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--cyan);">0.943</div><div class="mstat-lbl" style="font-size: 7.5px;">AUC</div></div>
+                </div>
+                <div class="model-footer" style="margin-top: 8px; padding-top: 8px;">
                   <span class="tag tag-cyan model-status-badge" style="display:none;">SELECTED PRIMARY</span>
-                  <span class="text-dim" style="font-size:9.5px;margin-left:auto">↓ 0.8ms</span>
+                  <span class="text-dim" style="font-size: 9.5px; margin-left: auto;">↓ 0.8ms</span>
                 </div>
               </div>
 
               <!-- Logistic Regression -->
               <div class="model-card" data-model="Logistic Regression">
-                <div class="flex-center gap-8 mb-10">
+                <div class="flex-center gap-8 mb-6">
                   <div class="model-name">Logistic Regression</div>
                   <span class="tag tag-green model-active-badge" style="margin-left:auto">Active</span>
                 </div>
                 <div class="model-type">Linear Classifier · Scaled Features</div>
-                <div class="model-stats">
-                  <div class="mstat"><div class="mstat-val">85.14%</div><div class="mstat-lbl">Accuracy</div></div>
-                  <div class="mstat"><div class="mstat-val" style="color:var(--green)">0.856</div><div class="mstat-lbl">F1 Score</div></div>
+                
+                <!-- Live Scan Threat Spotlight -->
+                <div class="mstat-scan-threat" style="text-align: center; margin: 8px 0 12px 0; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 6px; border: 1px dashed var(--border); transition: all 0.3s ease;">
+                  <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Current File Threat</div>
+                  <div class="mstat-val" style="font-size: 26px; font-weight: 800; color: var(--text-dim); line-height: 1.1;">--</div>
                 </div>
-                <div class="model-footer">
+
+                <!-- Baseline Evaluation Metrics -->
+                <div class="model-stats" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-primary);">85.1%</div><div class="mstat-lbl" style="font-size: 7.5px;">ACC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">83.2%</div><div class="mstat-lbl" style="font-size: 7.5px;">PRC</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--text-secondary);">88.1%</div><div class="mstat-lbl" style="font-size: 7.5px;">RCL</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--green);">0.856</div><div class="mstat-lbl" style="font-size: 7.5px;">F1</div></div>
+                  <div class="mstat"><div class="mstat-val" style="font-size: 11px; color: var(--cyan);">0.927</div><div class="mstat-lbl" style="font-size: 7.5px;">AUC</div></div>
+                </div>
+                <div class="model-footer" style="margin-top: 8px; padding-top: 8px;">
                   <span class="tag tag-cyan model-status-badge" style="display:none;">SELECTED PRIMARY</span>
-                  <span class="text-dim" style="font-size:9.5px;margin-left:auto">↓ 0.2ms</span>
+                  <span class="text-dim" style="font-size: 9.5px; margin-left: auto;">↓ 0.2ms</span>
                 </div>
               </div>
             </div>
@@ -645,7 +703,7 @@
             <div class="panel-title">Mối Liên Hệ Giữa Mô Hình Ensemble & Cây Quyết Định XAI</div>
             <span class="tag tag-cyan">Lý Thuyết & Thực Tiễn</span>
           </div>
-          <div class="panel-body" style="line-height:1.6;font-size:12px;color:var(--text-secondary);">
+          <div class="panel-body" id="xai-explanation-panel-body" style="line-height:1.6;font-size:12px;color:var(--text-secondary);">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
               <div>
                 <h4 style="color:var(--text-primary);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px;">
@@ -681,31 +739,21 @@
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- ── VIEW: DATASETS ── -->
-      <div id="view-datasets" class="dashboard-view" style="display:none;">
-        <div class="row-2col" style="grid-template-columns: 1fr 1fr; margin-bottom:16px;">
+        <!-- ── DATASETS AND FEATURE SPACE PANEL (MERGED) ── -->
+        <div class="row-2col" style="grid-template-columns: 1fr 1fr; margin-top: 16px; margin-bottom:16px;">
           <!-- Feature Distribution KDE -->
           <div class="panel">
-            <div class="panel-header"><div class="panel-title">KDE Feature Distribution</div><span class="tag tag-cyan">F738 Section Size</span></div>
-            <div class="panel-body">
-              <p style="font-size:10px;color:var(--text-secondary);margin-bottom:12px;">Probability density curves comparison of benign vs malware executables:</p>
+            <div class="panel-header"><div class="panel-title">KDE Feature Distribution</div><span class="tag tag-cyan">F638 TimeDateStamp</span></div>
+            <div class="panel-body" style="display:flex;flex-direction:column;gap:8px;">
+              <p style="font-size:10px;color:var(--text-secondary);margin-bottom:2px;">Biểu đồ mật độ xác suất thực tế (Kernel Density Estimation) trích xuất từ notebook huấn luyện:</p>
               
-              <div style="position:relative;height:180px;background:var(--bg-base);border-radius:6px;border:1px solid var(--border);padding:10px;">
-                <svg viewBox="0 0 400 150" style="width:100%;height:100%;" preserveAspectRatio="none">
-                  <!-- Malware KDE line -->
-                  <path d="M10,140 C50,130 90,100 130,50 C170,10 210,50 250,90 C290,120 330,135 390,140" fill="none" stroke="var(--red)" stroke-width="2"/>
-                  <path d="M10,140 C50,130 90,100 130,50 C170,10 210,50 250,90 C290,120 330,135 390,140 L390,148 L10,148 Z" fill="rgba(255,61,90,0.06)"/>
-                  
-                  <!-- Benign KDE line -->
-                  <path d="M10,140 C50,80 90,40 130,100 C170,130 210,138 250,140 C290,140 330,140 390,140" fill="none" stroke="var(--green)" stroke-width="2"/>
-                  <path d="M10,140 C50,80 90,40 130,100 C170,130 210,138 250,140 C290,140 330,140 390,140 L390,148 L10,148 Z" fill="rgba(40,232,125,0.05)"/>
-                </svg>
+              <div style="position:relative;background:#090d16;border-radius:6px;border:1px solid var(--border);padding:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                <img src="cell_19_output_0.png" alt="Real KDE Feature Distribution" style="width:100%;height:auto;object-fit:contain;border-radius:4px;filter:invert(0.9) hue-rotate(180deg) brightness(1.2) contrast(1.15);" id="kde-img"/>
               </div>
-              <div style="display:flex;justify-content:center;gap:12px;margin-top:8px;font-size:10px;">
-                <span style="color:var(--green);">● Benign KDE</span>
-                <span style="color:var(--red);">● Malware KDE</span>
+              <div style="display:flex;justify-content:center;gap:12px;font-size:10px;margin-top:2px;">
+                <span style="color:#00d2c8;">● Nhãn 0: An toàn (Benign)</span>
+                <span style="color:#ff3d5a;">● Nhãn 1: Mã độc (Malware)</span>
               </div>
             </div>
           </div>
@@ -804,70 +852,6 @@
         </div>
       </div>
 
-      <!-- ── VIEW: TRAINING RUNS ── -->
-      <div id="view-training" class="dashboard-view" style="display:none;">
-        <div class="row-2col" style="grid-template-columns: 320px 1fr;">
-          <!-- Hyperparameter Configuration Panel -->
-          <div class="panel">
-            <div class="panel-header"><div class="panel-title">Training Config</div></div>
-            <div class="panel-body" style="display:flex;flex-direction:column;gap:12px;">
-              <div>
-                <label style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;display:block;margin-bottom:5px;">Target Algorithm</label>
-                <select id="train-algo" style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-primary);padding:6px;border-radius:5px;font-family:var(--mono);outline:none;">
-                  <option value="Random Forest">Random Forest v4</option>
-                  <option value="LightGBM">LightGBM v3</option>
-                  <option value="XGBoost">XGBoost v2</option>
-                </select>
-              </div>
-
-              <div>
-                <label style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;display:block;margin-bottom:5px;">Estimators / Trees: <span id="val-estimators" style="color:var(--cyan);font-weight:bold;">100</span></label>
-                <input type="range" id="train-estimators" min="10" max="500" value="100" style="width:100%;accent-color:var(--cyan);" />
-              </div>
-
-              <div>
-                <label style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;display:block;margin-bottom:5px;">Learning Rate: <span id="val-lr" style="color:var(--cyan);font-weight:bold;">0.05</span></label>
-                <input type="range" id="train-lr" min="0.01" max="0.3" step="0.01" value="0.05" style="width:100%;accent-color:var(--cyan);" />
-              </div>
-
-              <div>
-                <label style="font-size:9.5px;color:var(--text-secondary);text-transform:uppercase;display:block;margin-bottom:5px;">Max Depth: <span id="val-depth" style="color:var(--cyan);font-weight:bold;">8</span></label>
-                <input type="range" id="train-depth" min="3" max="25" value="8" style="width:100%;accent-color:var(--cyan);" />
-              </div>
-
-              <div class="sep" style="margin:8px 0;"></div>
-              <button class="btn btn-primary" id="btn-start-training" style="justify-content:center;">🚀 Start Hyperparameter Run</button>
-            </div>
-          </div>
-
-          <!-- Training Live Runs Chart and Logs -->
-          <div class="panel">
-            <div class="panel-header">
-              <div class="panel-title">Training Progress Console</div>
-              <span class="tag tag-cyan" id="training-status-badge">Idle</span>
-            </div>
-            <div class="panel-body">
-              <div style="display:grid;grid-template-columns:1fr 200px;gap:15px;margin-bottom:15px;">
-                <div style="position:relative;height:160px;background:var(--bg-base);border:1px solid var(--border);border-radius:6px;padding:10px;">
-                  <svg viewBox="0 0 400 150" style="width:100%;height:100%;" preserveAspectRatio="none" id="training-svg">
-                    <line x1="0" y1="130" x2="400" y2="130" stroke="rgba(0,210,200,0.1)"/>
-                    <!-- Training curves will be drawn dynamically -->
-                  </svg>
-                </div>
-                <div style="font-size:10.5px;color:var(--text-secondary);display:flex;flex-direction:column;gap:8px;">
-                  <div>EPOCH: <strong id="tr-epoch" style="color:var(--text-primary);">0/50</strong></div>
-                  <div>LOSS: <strong id="tr-loss" style="color:var(--red);">0.000</strong></div>
-                  <div>VAL ACC: <strong id="tr-acc" style="color:var(--green);">0.0%</strong></div>
-                  <div>GPU UTIL: <strong style="color:var(--amber);">RTX 4090 · 92%</strong></div>
-                </div>
-              </div>
-              <div class="terminal" id="training-terminal" style="max-height:100px;">
-                <div class="t-line"><span class="t-time">00:00:00</span><span class="t-tag t-info">[TRAIN]</span><span class="t-msg">Ready to initialize GPU environment. Select parameters and click Start.</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
 
       <!-- ── VIEW: SETTINGS ── -->
