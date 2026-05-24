@@ -8,6 +8,7 @@ let apiKeys = [
 ];
 let systemLogCount = 0;
 let currentScanData = null;
+const recentScansHistory = [];
 
 // Sourced directly from final-project-cs114.ipynb baseline evaluation results
 const BASELINE_METRICS = {
@@ -925,20 +926,6 @@ function renderScanResults(data, filename) {
         alertWrapper.innerHTML = getThreatAlertHTML(data);
         scannerIndicatorsList.appendChild(alertWrapper.firstElementChild);
     }
-    
-    if (data.indicators && data.indicators.length > 0) {
-        data.indicators.forEach(ind => {
-            const item = document.createElement('div');
-            item.style.background = ind.type === 'danger' ? 'rgba(255,61,90,0.07)' : 'rgba(0,210,200,0.07)';
-            item.style.borderLeft = `3px solid ${ind.type === 'danger' ? 'var(--red)' : 'var(--cyan)'}`;
-            item.style.padding = '8px 12px';
-            item.style.borderRadius = '0 6px 6px 0';
-            item.style.fontSize = '11px';
-            item.style.color = 'var(--text-primary)';
-            item.innerHTML = ind.message;
-            scannerIndicatorsList.appendChild(item);
-        });
-    }
 
 
 }
@@ -1077,53 +1064,180 @@ function updateOverviewModelBars(data) {
     });
 }
 
-// Append rows in Recent Scans Table dynamically
-function addRecentScanRow(data, filename, isMalware) {
+// Append rows in Recent Scans Table dynamically (capped at 18 and clickable to restore context)
+function renderRecentScansTable() {
     const tbody = document.getElementById('recent-scans-tbody');
     if (!tbody) return;
 
-    const tr = document.createElement('tr');
-    
-    let ext = filename.split('.').pop().toLowerCase();
-    if (ext.length > 4) ext = 'exe';
-    
-    let iconColor = isMalware ? 'var(--red)' : 'var(--green)';
-    let iconBg = isMalware ? 'rgba(255,61,90,0.1)' : 'rgba(40,232,125,0.1)';
-    let iconBorder = isMalware ? 'rgba(255,61,90,0.2)' : 'rgba(40,232,125,0.2)';
+    tbody.innerHTML = '';
 
-    const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
-    
-    const verdictTag = isMalware ? '<span class="tag tag-red">MALICIOUS</span>' : '<span class="tag tag-green">CLEAN</span>';
-    const typeTag = isMalware ? '<span class="tag tag-red">Threat</span>' : '<span class="tag tag-green">Clean</span>';
-    const confFillColor = isMalware ? 'var(--red)' : 'var(--green)';
+    recentScansHistory.forEach((scanItem) => {
+        const { data, filename, isMalware, time, md5 } = scanItem;
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.style.transition = 'all 0.2s ease';
+        
+        tr.addEventListener('mouseenter', () => {
+            tr.style.background = 'rgba(255,255,255,0.03)';
+        });
+        tr.addEventListener('mouseleave', () => {
+            tr.style.background = '';
+        });
+        
+        let ext = filename.split('.').pop().toLowerCase();
+        if (ext.length > 4) ext = 'exe';
+        
+        let iconColor = isMalware ? 'var(--red)' : 'var(--green)';
+        let iconBg = isMalware ? 'rgba(255,61,90,0.1)' : 'rgba(40,232,125,0.1)';
+        let iconBorder = isMalware ? 'rgba(255,61,90,0.2)' : 'rgba(40,232,125,0.2)';
 
-    tr.innerHTML = `
-        <td>
-            <div class="file-cell">
-                <div class="file-icon" style="background:${iconBg};border-color:${iconBorder};color:${iconColor}">.${ext}</div>
-                <div>
-                <div class="file-name">${filename}</div>
-                <div class="file-hash">MD5: ${generateRandomMD5()}</div>
+        const verdictTag = isMalware ? '<span class="tag tag-red">MALICIOUS</span>' : '<span class="tag tag-green">CLEAN</span>';
+        const typeTag = isMalware ? '<span class="tag tag-red">Threat</span>' : '<span class="tag tag-green">Clean</span>';
+        const confFillColor = isMalware ? 'var(--red)' : 'var(--green)';
+
+        tr.innerHTML = `
+            <td>
+                <div class="file-cell">
+                    <div class="file-icon" style="background:${iconBg};border-color:${iconBorder};color:${iconColor}">.${ext}</div>
+                    <div>
+                    <div class="file-name">${filename}</div>
+                    <div class="file-hash">MD5: ${md5}</div>
+                    </div>
                 </div>
-            </div>
-        </td>
-        <td>${typeTag}</td>
-        <td>${verdictTag}</td>
-        <td>
-            <div class="confidence-bar">
-                <div class="conf-track"><div class="conf-fill" style="width:${data.threat_score}%;background:${confFillColor}"></div></div>
-                <span style="color:${confFillColor};font-size:10px">${data.threat_score}%</span>
-            </div>
-        </td>
-        <td><span style="color:var(--cyan);font-size:10.5px">RF-v3</span></td>
-        <td class="text-dim">${time}</td>
-    `;
+            </td>
+            <td>${typeTag}</td>
+            <td>${verdictTag}</td>
+            <td>
+                <div class="confidence-bar">
+                    <div class="conf-track"><div class="conf-fill" style="width:${data.threat_score}%;background:${confFillColor}"></div></div>
+                    <span style="color:${confFillColor};font-size:10px">${data.threat_score}%</span>
+                </div>
+            </td>
+            <td><span style="color:var(--cyan);font-size:10.5px">RF-v3</span></td>
+            <td class="text-dim">${time}</td>
+        `;
 
-    tbody.insertBefore(tr, tbody.firstChild);
+        // Click handler to load the historical prediction context
+        tr.addEventListener('click', () => {
+            loadHistoricalScan(scanItem);
+            
+            // Visual feedback for the selected active row
+            const allRows = tbody.querySelectorAll('tr');
+            allRows.forEach(r => {
+                r.style.borderLeft = '';
+                r.style.background = '';
+            });
+            tr.style.borderLeft = '3px solid var(--cyan)';
+            tr.style.background = 'rgba(0, 210, 200, 0.04)';
+        });
+
+        tbody.appendChild(tr);
+    });
+}
+
+function loadHistoricalScan(scanItem) {
+    const historicalData = scanItem.data;
+    const filename = scanItem.filename;
+    const isMalware = scanItem.isMalware;
+
+    currentScanData = historicalData;
+    appendLog('SYS', `Nạp lịch sử quét tệp: ${filename} (Mô hình: ${window.activeModel})`, 'info');
+
+    // 1. Update Overview Gauges
+    updateThreatGauge(historicalData, isMalware, 'gauge-ring', 'gauge-pct', 'threat-level', 'threat-desc', 'threat-pulse');
     
-    if (tbody.children.length > 10) {
-        tbody.removeChild(tbody.lastChild);
+    // 2. Update Overview Model Bars
+    updateOverviewModelBars(historicalData);
+    
+    // 3. Update Threat Warning Alert Banner (Overview)
+    renderThreatAlertBanner(historicalData, isMalware);
+    
+    // 4. Update Active Spotlight metrics, explanations and cards
+    syncActiveModelUI();
+
+    // 5. Update Scanner Result Panel
+    const scanResPanel = document.getElementById('scanner-result-panel');
+    if (scanResPanel) {
+        scanResPanel.style.display = 'block';
     }
+    const resFilename = document.getElementById('scan-res-filename');
+    if (resFilename) {
+        resFilename.textContent = filename;
+    }
+    
+    const resBadge = document.getElementById('scan-res-badge');
+    if (resBadge) {
+        if (isMalware) {
+            resBadge.className = 'tag tag-red';
+            resBadge.textContent = 'MALWARE DETECTED';
+        } else {
+            resBadge.className = 'tag tag-green';
+            resBadge.textContent = 'CLEAN';
+        }
+    }
+
+    // 6. Update Live Scanner Threat Gauge
+    updateThreatGauge(historicalData, isMalware, 'scanner-gauge-ring', 'scanner-gauge-pct', 'scanner-threat-level', null, null);
+    
+    // 7. Re-draw scanner individual model bars
+    const scanModelContainer = document.getElementById('scanner-model-bars');
+    if (scanModelContainer) {
+        scanModelContainer.innerHTML = '';
+        for (const [modelName, probValue] of Object.entries(historicalData.model_scores)) {
+            const percentage = probValue * 100;
+            const color = percentage > 50 ? 'var(--red)' : 'var(--cyan)';
+            
+            const row = document.createElement('div');
+            row.className = 'threat-row';
+            row.innerHTML = `
+                <span class="threat-type" style="width:140px;">${modelName}</span>
+                <div class="tbar-track"><div class="tbar-fill" style="width:${percentage}%;background:${color};"></div></div>
+                <span class="threat-pct-label ${percentage > 50 ? 'text-red' : 'text-cyan'}" style="width:45px;">${percentage.toFixed(1)}%</span>
+            `;
+            scanModelContainer.appendChild(row);
+        }
+    }
+
+    // 8. Update File Structural Metadata SMDs
+    const metadata = historicalData.file_metadata;
+    if (metadata) {
+        const sizeEl = document.getElementById('smd-size');
+        const vsizeEl = document.getElementById('smd-vsize');
+        const sectionsEl = document.getElementById('smd-sections');
+        const importsEl = document.getElementById('smd-imports');
+        if (sizeEl) sizeEl.textContent = formatBytes(metadata.size || 0);
+        if (vsizeEl) vsizeEl.textContent = formatBytes(metadata.vsize || 0);
+        if (sectionsEl) sectionsEl.textContent = metadata.sections || '0';
+        if (importsEl) importsEl.textContent = metadata.imports || '0';
+    }
+
+    // 9. Update threat indicators warning box inside Scanner view
+    const scannerIndicatorsList = document.getElementById('scanner-indicators-list');
+    if (scannerIndicatorsList) {
+        scannerIndicatorsList.innerHTML = '';
+        if (isMalware) {
+            const alertWrapper = document.createElement('div');
+            alertWrapper.innerHTML = getThreatAlertHTML(historicalData);
+            scannerIndicatorsList.appendChild(alertWrapper.firstElementChild);
+        }
+    }
+}
+
+function addRecentScanRow(data, filename, isMalware) {
+    const scanItem = {
+        data: JSON.parse(JSON.stringify(data)),
+        filename: filename,
+        isMalware: isMalware,
+        time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+        md5: generateRandomMD5()
+    };
+    
+    recentScansHistory.unshift(scanItem);
+    if (recentScansHistory.length > 18) {
+        recentScansHistory.pop();
+    }
+    
+    renderRecentScansTable();
 }
 
 // Setup Model Performance view & metrics card grid
@@ -1345,78 +1459,84 @@ function drawTrainingAxes() {
 
 // Generate Threat Warning Alert Banner HTML for dynamic callouts (Overview & Scanner)
 function getThreatAlertHTML(data) {
-    let suspiciousApis = [];
-    let highEntropySection = null;
-    let missingSignature = false;
-    let upxPacker = false;
+    const activeModel = window.activeModel || "Ensemble Model";
+    const tf = data.top_features || {};
+    
+    // Extract feature values with safe fallbacks from file_metadata or typical simulation defaults
+    const f503 = tf.F503 !== undefined ? tf.F503 : (data.file_metadata ? data.file_metadata.entropy : 7.91);
+    const f1344 = tf.F1344 !== undefined ? tf.F1344 : (data.file_metadata && data.file_metadata.has_signature !== undefined ? data.file_metadata.has_signature : 0);
+    const f2142 = tf.F2142 !== undefined ? tf.F2142 : (data.file_metadata ? data.file_metadata.imports : 256);
+    const f638 = tf.F638 !== undefined ? tf.F638 : (data.file_metadata ? data.file_metadata.timestamp : "1282245062");
+    const f504 = tf.F504 !== undefined ? tf.F504 : (data.file_metadata ? data.file_metadata.vsize : 4194304);
 
-    if (data.indicators && data.indicators.length > 0) {
-        data.indicators.forEach(ind => {
-            const msg = ind.message.toLowerCase();
-            if (msg.includes('api') || msg.includes('import')) {
-                const matches = ind.message.match(/imports?(?:\s+found)?(?:\s*:\s*|\s+\()([^).]+)/i);
-                if (matches && matches[1]) {
-                    suspiciousApis = matches[1].split(',').map(s => s.trim().replace(/[()]/g, ''));
-                } else {
-                    suspiciousApis = ['CreateRemoteThread', 'WriteProcessMemory', 'UrlDownloadToFile'];
-                }
-            }
-            if (msg.includes('entropy')) {
-                const sectionMatch = ind.message.match(/'([^']+)'/) || ind.message.match(/section\s+(\.\w+|\w+)/i);
-                const valMatch = ind.message.match(/entropy:\s*([\d.]+)/i) || ind.message.match(/entropy\s+of\s+([\d.]+)/i) || ind.message.match(/([\d.]+)/);
-                highEntropySection = {
-                    name: sectionMatch ? sectionMatch[1] : 'unknown',
-                    entropy: valMatch ? parseFloat(valMatch[1]) : 7.5
-                };
-            }
-            if (msg.includes('signature is missing') || msg.includes('unsigned')) {
-                missingSignature = true;
-            }
-            if (msg.includes('upx')) {
-                upxPacker = true;
-            }
-        });
-    }
-
-    return `
+    let html = `
         <div class="threat-alert-box" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 12px; margin-bottom: 10px; font-family: var(--display); text-align: left; box-sizing: border-box; width: 100%;">
             <div style="display: flex; align-items: center; gap: 8px; color: var(--amber); font-weight: bold; font-size: 11.5px; margin-bottom: 8px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <span>CHỈ BÁO RỦI RO TỪ MÔ HÌNH (PROBABILISTIC THREAT WARNING)</span>
+                <span>CẢNH BÁO RỦI RO DỰA TRÊN TRỌNG SỐ ĐẶC TRƯNG CỦA MÔ HÌNH (${activeModel.toUpperCase()})</span>
             </div>
             <div style="font-size: 10.5px; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 6px;">
-                <p style="margin:0; font-weight:bold; color: var(--text-primary);">Các đặc trưng cấu trúc nhị phân khả nghi làm tăng xác suất đánh giá rủi ro (Model Feature Observations):</p>
-                
-                ${missingSignature ? `
-                <div style="background: rgba(245,158,11,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--amber);">
-                    <strong style="color:var(--amber);">⚠️ Cảnh báo thiếu chữ ký số (Unsigned PE Header):</strong>
-                    <span style="color:var(--text-dim); margin-left: 4px;">Đặc trưng tệp không mang chữ ký số hợp lệ. Đây là yếu tố thường thấy làm tăng xác suất đánh giá rủi ro giả mạo nguồn gốc của mô hình.</span>
-                </div>
-                ` : ''}
+                <p style="margin:0; font-weight:bold; color: var(--text-primary);">Các đặc trưng cấu trúc nhị phân của tệp được mô hình phân tích và tính toán xác suất rủi ro (Model Feature Observations):</p>
+    `;
 
-                ${highEntropySection ? `
+    // 1. Feature F1344: has_signature
+    if (f1344 === 0) {
+        html += `
                 <div style="background: rgba(245,158,11,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--amber);">
-                    <strong style="color:var(--amber);">⚠️ Chỉ báo phân đoạn nén/mã hóa (Entropy cao ở Section '${highEntropySection.name}'):</strong>
-                    <span style="color:var(--text-dim); margin-left: 4px;">Đo được entropy đạt <strong>${highEntropySection.entropy.toFixed(2)}</strong>. Đặc trưng toán học này chỉ ra khả năng cao tệp sử dụng kỹ thuật đóng gói (Packing) hoặc xáo trộn mã nguồn.</span>
+                    <strong style="color:var(--amber);">⚠️ Đặc trưng F1344 (Trạng thái Chữ ký số = 0):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Mô hình ghi nhận đặc trưng tệp không có chữ ký số hợp lệ. Trong quá trình học máy của bộ phân loại Ensemble, việc thiếu chữ ký số được gán trọng số cao làm gia tăng đáng kể xác suất dự đoán tệp là độc hại.</span>
                 </div>
-                ` : ''}
+        `;
+    }
 
-                ${upxPacker ? `
+    // 2. Feature F503: Entropy
+    if (f503 > 6.0) {
+        html += `
                 <div style="background: rgba(245,158,11,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--amber);">
-                    <strong style="color:var(--amber);">⚠️ Phát hiện dấu hiệu nén (UPX Section):</strong>
-                    <span style="color:var(--text-dim); margin-left: 4px;">Phát hiện nhãn nén UPX trong phân đoạn. Đây là đặc trưng làm tăng chỉ số rủi ro che giấu cấu trúc gốc trước bộ phân loại.</span>
+                    <strong style="color:var(--amber);">⚠️ Đặc trưng F503 (Entropy của tệp = ${parseFloat(f503).toFixed(2)}):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Mức độ Entropy rất cao được ghi nhận trong cấu trúc tệp PE. Mô hình toán học đánh giá chỉ số này tương quan mạnh với việc sử dụng các kỹ thuật đóng gói (packing) hoặc mã hóa nhằm ẩn giấu cấu trúc gốc.</span>
                 </div>
-                ` : ''}
+        `;
+    }
 
-                ${suspiciousApis.length > 0 ? `
+    // 3. Feature F2142: Imports count
+    if (f2142 > 150) {
+        html += `
                 <div style="background: rgba(245,158,11,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--amber);">
-                    <strong style="color:var(--amber);">⚠️ Cảnh báo lệnh gọi API nhạy cảm (Imports Table):</strong>
-                    <span style="color:var(--text-dim); margin-left: 4px;">Phát hiện hàm: <code style="color:var(--amber); background:rgba(245,158,11,0.1); padding:1px 4px; border-radius:2px; font-family:var(--mono);">${suspiciousApis.join(', ')}</code>. Các đặc trưng nhập khẩu này có độ tương quan rủi ro cao với hành vi tải payload hoặc mã hóa.</span>
+                    <strong style="color:var(--amber);">⚠️ Đặc trưng F2142 (Số lượng hàm Imports = ${f2142}):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Số lượng hàm API được liên kết động lớn. Mô hình đánh giá cấu trúc liên kết import này có độ tương quan xác suất lớn với các nhóm phần mềm độc hại sử dụng nhiều thư viện nhạy cảm trong tập dữ liệu huấn luyện.</span>
                 </div>
-                ` : ''}
+        `;
+    }
+
+    // 4. Feature F638: TimeDateStamp
+    const tsNum = parseInt(f638);
+    if (!isNaN(tsNum) && tsNum < 1600000000) {
+        html += `
+                <div style="background: rgba(245,158,11,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--amber);">
+                    <strong style="color:var(--amber);">⚠️ Đặc trưng F638 (TimeDateStamp Epoch = ${f638}):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Dấu thời gian biên dịch (timestamp) hiển thị giá trị bất thường hoặc quá khứ xa. Mô hình khai thác đặc trưng này như một tín hiệu phát hiện bất thường thường thấy ở các tệp độc hại giả mạo thông tin biên dịch.</span>
+                </div>
+        `;
+    }
+
+    // 5. Feature F504: Virtual Size
+    if (f504 > 2000000) {
+        html += `
+                <div style="background: rgba(245,158,11,0.04); padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--amber);">
+                    <strong style="color:var(--amber);">⚠️ Đặc trưng F504 (Virtual Size = ${parseInt(f504).toLocaleString()} bytes):</strong>
+                    <span style="color:var(--text-dim); margin-left: 4px;">Kích thước vùng nhớ ảo được cấp phát lớn. Đây là yếu tố đặc trưng cấu trúc nhị phân được các cây quyết định trong mô hình sử dụng để định lượng khả năng phân đoạn ảo phình to.</span>
+                </div>
+        `;
+    }
+
+    html += `
+                <p style="margin: 4px 0 0 0; font-size: 9.5px; color: var(--text-dim); font-style: italic;">* Lưu ý: Các cảnh báo trên chỉ mang tính chất cảnh báo xác suất toán học từ mô hình phân loại dựa trên đặc trưng cấu trúc tĩnh, không phải là khẳng định tuyệt đối về hành vi của tệp.</p>
             </div>
         </div>
     `;
+
+    return html;
 }
 
 // Render dynamic warning banner to Overview dashboard

@@ -429,8 +429,8 @@
         </div>
       </div>
 
-      <!-- Row: Recent Scans + Training Progress -->
-      <div class="row-2col" style="grid-template-columns: 1fr 340px; margin-bottom: 16px;">
+      <!-- Row: Recent Scans -->
+      <div style="margin-bottom: 16px;">
         <!-- Recent Scans -->
         <div class="panel" style="display: flex; flex-direction: column;">
           <div class="panel-header">
@@ -454,46 +454,6 @@
                 <!-- Rows will be added dynamically by JS -->
               </tbody>
             </table>
-          </div>
-        </div>
-
-        <!-- Training Progress -->
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">Training Progress</div>
-            <span class="tag tag-amber pulse" id="overview-training-badge">Running</span>
-          </div>
-          <div class="panel-body">
-            <div style="margin-bottom:14px">
-              <div class="flex-center gap-6 mb-10" style="font-size:10.5px">
-                <span class="text-muted" id="overview-training-model">Transformer-v4</span>
-                <span style="margin-left:auto;color:var(--cyan);font-size:10px" id="overview-training-epoch">Epoch 42/100</span>
-              </div>
-              <div class="progress-item">
-                <div class="progress-header"><span class="progress-name">Training Loss</span><span class="progress-val" id="overview-training-loss">0.032</span></div>
-                <div class="progress-track"><div class="progress-fill" id="overview-loss-fill" style="width:78%"></div></div>
-              </div>
-              <div class="progress-item">
-                <div class="progress-header"><span class="progress-name">Validation Acc</span><span class="progress-val" id="overview-validation-acc" style="color:var(--amber)">96.8%</span></div>
-                <div class="progress-track"><div class="progress-fill amber" id="overview-acc-fill" style="width:62%"></div></div>
-              </div>
-              <div class="progress-item">
-                <div class="progress-header"><span class="progress-name">ETA</span><span class="progress-val" id="overview-training-eta" style="color:var(--purple)">2h 14m</span></div>
-                <div class="progress-track"><div class="progress-fill purple" id="overview-eta-fill" style="width:42%"></div></div>
-              </div>
-            </div>
-            <div class="sep"></div>
-            <div style="font-size:10.5px;color:var(--text-secondary);line-height:2">
-              <div class="flex-center gap-6"><span class="text-dim">GPU</span><span style="margin-left:auto" id="overview-training-gpu">RTX 4090 · 94% util</span></div>
-              <div class="flex-center gap-6"><span class="text-dim">Samples</span><span style="margin-left:auto" id="overview-training-samples">1.2M train / 240K val</span></div>
-              <div class="flex-center gap-6"><span class="text-dim">LR</span><span style="margin-left:auto;color:var(--cyan)">2e-5 (cosine decay)</span></div>
-              <div class="flex-center gap-6"><span class="text-dim">Batch</span><span style="margin-left:auto">512</span></div>
-            </div>
-            <div class="sep"></div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-ghost" id="btn-pause-training" style="flex:1;justify-content:center;font-size:10.5px">Pause</button>
-              <button class="btn btn-primary" id="btn-details-training" style="flex:1;justify-content:center;font-size:10.5px">Details</button>
-            </div>
           </div>
         </div>
       <!-- view-overview end -->
