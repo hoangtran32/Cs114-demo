@@ -30,7 +30,7 @@ MODELS = {
 }
 
 print("Model assets loaded successfully!")
-USE_CALIBRATION = True
+USE_CALIBRATION = False
 
 PORT = 8000
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web')

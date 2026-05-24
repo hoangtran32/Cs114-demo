@@ -839,7 +839,10 @@ function renderScanResults(data, filename) {
     sessionScans++;
     document.getElementById('metric-scanned').textContent = sessionScans.toLocaleString();
 
-    const isMalware = data.verdict.includes('MALWARE') || data.verdict.includes('DANGEROUS');
+    const thresholdSlider = document.getElementById('setting-threshold');
+    const threshold = thresholdSlider ? parseFloat(thresholdSlider.value) : 0.5;
+    const activeProb = data.model_scores[window.activeModel] !== undefined ? data.model_scores[window.activeModel] : (data.threat_score / 100);
+    const isMalware = activeProb > threshold;
     if (isMalware) {
         sessionThreats++;
         document.getElementById('metric-threats').textContent = sessionThreats.toLocaleString();
@@ -891,22 +894,7 @@ function renderScanResults(data, filename) {
     updateThreatGauge(data, isMalware, 'scanner-gauge-ring', 'scanner-gauge-pct', 'scanner-threat-level', null, null);
     
     // Draw scanner individual classifier performance bars
-    const scanModelContainer = document.getElementById('scanner-model-bars');
-    scanModelContainer.innerHTML = '';
-    
-    for (const [modelName, probValue] of Object.entries(data.model_scores)) {
-        const percentage = probValue * 100;
-        const color = percentage > 50 ? 'var(--red)' : 'var(--cyan)';
-        
-        const row = document.createElement('div');
-        row.className = 'threat-row';
-        row.innerHTML = `
-            <span class="threat-type" style="width:140px;">${modelName}</span>
-            <div class="tbar-track"><div class="tbar-fill" style="width:${percentage}%;background:${color};"></div></div>
-            <span class="threat-pct-label ${percentage > 50 ? 'text-red' : 'text-cyan'}" style="width:45px;">${percentage.toFixed(1)}%</span>
-        `;
-        scanModelContainer.appendChild(row);
-    }
+    updateScannerModelBars(data);
 
     // Render File Structural Metadata
     const metadata = data.file_metadata;
@@ -946,9 +934,12 @@ function simulateScanFallback(filename) {
     const chosenProb = modelScores[window.activeModel] || (isMalware ? 0.985 : 0.021);
     const score = chosenProb * 100;
     
+    const thresholdSlider = document.getElementById('setting-threshold');
+    const threshold = thresholdSlider ? parseFloat(thresholdSlider.value) : 0.5;
+    
     const fallbackData = {
         name: filename,
-        verdict: chosenProb > 0.5 ? "DANGEROUS / MALWARE" : "SAFE / BENIGN",
+        verdict: chosenProb > threshold ? "DANGEROUS / MALWARE" : "SAFE / BENIGN",
         threat_score: parseFloat(score.toFixed(1)),
         model_scores: modelScores,
         file_metadata: {
@@ -1040,6 +1031,9 @@ function updateOverviewModelBars(data) {
         { key: "Logistic Regression", id: "lr" }
     ];
 
+    const thresholdSlider = document.getElementById('setting-threshold');
+    const threshold = thresholdSlider ? parseFloat(thresholdSlider.value) : 0.5;
+
     models.forEach(m => {
         let val = 0;
         if (data.model_scores && data.model_scores[m.key] !== undefined) {
@@ -1053,7 +1047,8 @@ function updateOverviewModelBars(data) {
             bar.style.width = `${val}%`;
             lbl.textContent = `${val.toFixed(1)}%`;
             
-            if (val > 50) {
+            const isMal = (val / 100) > threshold;
+            if (isMal) {
                 bar.style.background = 'var(--red)';
                 lbl.className = 'threat-pct-label text-red';
             } else {
@@ -1064,6 +1059,31 @@ function updateOverviewModelBars(data) {
     });
 }
 
+// Update individual classifier model bars in Scanner Panel using threshold slider
+function updateScannerModelBars(data) {
+    const scanModelContainer = document.getElementById('scanner-model-bars');
+    if (!scanModelContainer || !data || !data.model_scores) return;
+
+    const thresholdSlider = document.getElementById('setting-threshold');
+    const threshold = thresholdSlider ? parseFloat(thresholdSlider.value) : 0.5;
+
+    scanModelContainer.innerHTML = '';
+    for (const [modelName, probValue] of Object.entries(data.model_scores)) {
+        const percentage = probValue * 100;
+        const isMal = probValue > threshold;
+        const color = isMal ? 'var(--red)' : 'var(--cyan)';
+        
+        const row = document.createElement('div');
+        row.className = 'threat-row';
+        row.innerHTML = `
+            <span class="threat-type" style="width:140px;">${modelName}</span>
+            <div class="tbar-track"><div class="tbar-fill" style="width:${percentage}%;background:${color};"></div></div>
+            <span class="threat-pct-label ${isMal ? 'text-red' : 'text-cyan'}" style="width:45px;">${percentage.toFixed(1)}%</span>
+        `;
+        scanModelContainer.appendChild(row);
+    }
+}
+
 // Append rows in Recent Scans Table dynamically (capped at 18 and clickable to restore context)
 function renderRecentScansTable() {
     const tbody = document.getElementById('recent-scans-tbody');
@@ -1071,8 +1091,19 @@ function renderRecentScansTable() {
 
     tbody.innerHTML = '';
 
+    const thresholdSlider = document.getElementById('setting-threshold');
+    const threshold = thresholdSlider ? parseFloat(thresholdSlider.value) : 0.5;
+
     recentScansHistory.forEach((scanItem) => {
-        const { data, filename, isMalware, time, md5 } = scanItem;
+        const { data, filename, time, md5 } = scanItem;
+        
+        // Evaluate dynamic threat and verdict based on currently active model
+        const activeProb = data.model_scores[window.activeModel] !== undefined 
+            ? data.model_scores[window.activeModel] 
+            : (data.threat_score / 100);
+        const isMalware = activeProb > threshold;
+        const dynamicThreatScore = parseFloat((activeProb * 100).toFixed(1));
+
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         tr.style.transition = 'all 0.2s ease';
@@ -1095,6 +1126,15 @@ function renderRecentScansTable() {
         const typeTag = isMalware ? '<span class="tag tag-red">Threat</span>' : '<span class="tag tag-green">Clean</span>';
         const confFillColor = isMalware ? 'var(--red)' : 'var(--green)';
 
+        const MODEL_SHORT_NAMES = {
+            "Random Forest": "RF",
+            "CatBoost": "CB",
+            "XGBoost": "XG",
+            "LightGBM": "LGB",
+            "AdaBoost": "ADA",
+            "Logistic Regression": "LR"
+        };
+
         tr.innerHTML = `
             <td>
                 <div class="file-cell">
@@ -1109,11 +1149,11 @@ function renderRecentScansTable() {
             <td>${verdictTag}</td>
             <td>
                 <div class="confidence-bar">
-                    <div class="conf-track"><div class="conf-fill" style="width:${data.threat_score}%;background:${confFillColor}"></div></div>
-                    <span style="color:${confFillColor};font-size:10px">${data.threat_score}%</span>
+                    <div class="conf-track"><div class="conf-fill" style="width:${dynamicThreatScore}%;background:${confFillColor}"></div></div>
+                    <span style="color:${confFillColor};font-size:10px">${dynamicThreatScore}%</span>
                 </div>
             </td>
-            <td><span style="color:var(--cyan);font-size:10.5px">RF-v3</span></td>
+            <td><span style="color:var(--cyan);font-size:10.5px">${MODEL_SHORT_NAMES[window.activeModel] || 'ML'}</span></td>
             <td class="text-dim">${time}</td>
         `;
 
@@ -1138,7 +1178,13 @@ function renderRecentScansTable() {
 function loadHistoricalScan(scanItem) {
     const historicalData = scanItem.data;
     const filename = scanItem.filename;
-    const isMalware = scanItem.isMalware;
+
+    const thresholdSlider = document.getElementById('setting-threshold');
+    const threshold = thresholdSlider ? parseFloat(thresholdSlider.value) : 0.5;
+    const activeProb = historicalData.model_scores[window.activeModel] !== undefined 
+        ? historicalData.model_scores[window.activeModel] 
+        : (historicalData.threat_score / 100);
+    const isMalware = activeProb > threshold;
 
     currentScanData = historicalData;
     appendLog('SYS', `Nạp lịch sử quét tệp: ${filename} (Mô hình: ${window.activeModel})`, 'info');
@@ -1180,23 +1226,7 @@ function loadHistoricalScan(scanItem) {
     updateThreatGauge(historicalData, isMalware, 'scanner-gauge-ring', 'scanner-gauge-pct', 'scanner-threat-level', null, null);
     
     // 7. Re-draw scanner individual model bars
-    const scanModelContainer = document.getElementById('scanner-model-bars');
-    if (scanModelContainer) {
-        scanModelContainer.innerHTML = '';
-        for (const [modelName, probValue] of Object.entries(historicalData.model_scores)) {
-            const percentage = probValue * 100;
-            const color = percentage > 50 ? 'var(--red)' : 'var(--cyan)';
-            
-            const row = document.createElement('div');
-            row.className = 'threat-row';
-            row.innerHTML = `
-                <span class="threat-type" style="width:140px;">${modelName}</span>
-                <div class="tbar-track"><div class="tbar-fill" style="width:${percentage}%;background:${color};"></div></div>
-                <span class="threat-pct-label ${percentage > 50 ? 'text-red' : 'text-cyan'}" style="width:45px;">${percentage.toFixed(1)}%</span>
-            `;
-            scanModelContainer.appendChild(row);
-        }
-    }
+    updateScannerModelBars(historicalData);
 
     // 8. Update File Structural Metadata SMDs
     const metadata = historicalData.file_metadata;
@@ -1678,6 +1708,7 @@ function setupSettingsAndTheme() {
     if (thresholdSlider && thresholdLabel) {
         thresholdSlider.addEventListener('input', () => {
             thresholdLabel.textContent = parseFloat(thresholdSlider.value).toFixed(2);
+            syncActiveModelUI(); // Real-time dynamic updates!
         });
     }
 
@@ -1709,9 +1740,11 @@ function setupSettingsAndTheme() {
     if (saveSettingsBtn) {
         saveSettingsBtn.addEventListener('click', () => {
             const thresh = thresholdSlider ? thresholdSlider.value : 0.50;
-            const calib = document.getElementById('setting-calibration').checked;
             
-            appendLog('SETTINGS', `Updating detection settings. Decision Threshold = ${thresh} | Structural Risk Calibration = ${calib}.`, 'success');
+            appendLog('SETTINGS', `Updating detection settings. Decision Threshold = ${thresh}`, 'success');
+            
+            // Sync UI state dynamically
+            syncActiveModelUI();
             
             // Show alert feedback
             alert("Detection Engine configurations saved successfully.");
@@ -1748,6 +1781,8 @@ let sessionTimelineScans = [];
 
 function syncActiveModelUI() {
     // 0. Update Models & Datasets dynamic XAI context
+    const thresholdSlider = document.getElementById('setting-threshold');
+    const threshold = thresholdSlider ? parseFloat(thresholdSlider.value) : 0.5;
     updateModelXAIContext(window.activeModel);
 
     // 1. Update selector dropdown value
@@ -1800,9 +1835,10 @@ function syncActiveModelUI() {
                     const probVal = currentScanData.model_scores[modelName];
                     const percentage = (probVal * 100).toFixed(1);
                     valEl.textContent = `${percentage}%`;
-                    valEl.style.color = probVal > 0.5 ? 'var(--red)' : 'var(--green)';
-                    scanScoreEl.style.background = probVal > 0.5 ? 'rgba(255, 61, 90, 0.04)' : 'rgba(40, 232, 125, 0.03)';
-                    scanScoreEl.style.borderColor = probVal > 0.5 ? 'rgba(255, 61, 90, 0.2)' : 'rgba(40, 232, 125, 0.2)';
+                    const isMal = probVal > threshold;
+                    valEl.style.color = isMal ? 'var(--red)' : 'var(--green)';
+                    scanScoreEl.style.background = isMal ? 'rgba(255, 61, 90, 0.04)' : 'rgba(40, 232, 125, 0.03)';
+                    scanScoreEl.style.borderColor = isMal ? 'rgba(255, 61, 90, 0.2)' : 'rgba(40, 232, 125, 0.2)';
                 } else {
                     valEl.textContent = '--';
                     valEl.style.color = 'var(--text-dim)';
@@ -1852,7 +1888,8 @@ function syncActiveModelUI() {
         if (currentScanData && currentScanData.model_scores && currentScanData.model_scores[window.activeModel] !== undefined) {
             let prob = currentScanData.model_scores[window.activeModel];
             scoreValEl.textContent = `${(prob * 100).toFixed(1)}%`;
-            scoreValEl.style.color = prob > 0.5 ? 'var(--red)' : 'var(--green)';
+            const isMal = prob > threshold;
+            scoreValEl.style.color = isMal ? 'var(--red)' : 'var(--green)';
         } else {
             scoreValEl.textContent = '0.0%';
             scoreValEl.style.color = 'var(--text-dim)';
@@ -1865,7 +1902,7 @@ function syncActiveModelUI() {
         if (currentScanData && currentScanData.model_scores && currentScanData.model_scores[window.activeModel] !== undefined) {
             const prob = currentScanData.model_scores[window.activeModel];
             const score = (prob * 100).toFixed(1);
-            const isMalware = prob > 0.5;
+            const isMalware = prob > threshold;
             
             // Calculate log-odds margin for models that use Sigmoid (CatBoost, XGBoost, LightGBM, Logistic Regression)
             let margin = 0;
@@ -2054,8 +2091,17 @@ function syncActiveModelUI() {
         // Update Overview Gauge
         updateThreatGauge(updatedData, isMalware, 'gauge-ring', 'gauge-pct', 'threat-level', 'threat-desc', 'threat-pulse');
         
+        // Update Overview Model Bars
+        updateOverviewModelBars(currentScanData);
+        
+        // Update Threat Warning Alert Banner (Overview)
+        renderThreatAlertBanner(updatedData, isMalware);
+        
         // Update Scanner Gauge
         updateThreatGauge(updatedData, isMalware, 'scanner-gauge-ring', 'scanner-gauge-pct', 'scanner-threat-level', null, null);
+        
+        // Update Scanner Model Bars
+        updateScannerModelBars(currentScanData);
         
         // Update Scanner Verdict Badge
         const resBadge = document.getElementById('scan-res-badge');
@@ -2068,7 +2114,21 @@ function syncActiveModelUI() {
                 resBadge.textContent = 'CLEAN';
             }
         }
+
+        // Update threat indicators warning box inside Scanner view
+        const scannerIndicatorsList = document.getElementById('scanner-indicators-list');
+        if (scannerIndicatorsList) {
+            scannerIndicatorsList.innerHTML = '';
+            if (isMalware) {
+                const alertWrapper = document.createElement('div');
+                alertWrapper.innerHTML = getThreatAlertHTML(updatedData);
+                scannerIndicatorsList.appendChild(alertWrapper.firstElementChild);
+            }
+        }
     }
+
+    // Always render recent scans table to keep the active model labels and dynamic scores synchronized
+    renderRecentScansTable();
 }
 
 
